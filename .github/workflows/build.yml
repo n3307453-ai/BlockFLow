@@ -1,4 +1,3 @@
-# Zapisz jako: .github/workflows/build.yml
 name: BlockFLow build
 
 on:
