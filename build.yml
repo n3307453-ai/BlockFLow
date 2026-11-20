@@ -1,0 +1,52 @@
+# Zapisz jako: .github/workflows/build.yml
+name: BlockFLow build
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build BlockFLow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Gradle 9.5.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.5.1
+
+      - name: Build
+        run: gradle build --no-daemon --stacktrace
+
+      - name: Artefakt BlockFLow
+        uses: actions/upload-artifact@v4
+        with:
+          name: BlockFLow
+          path: |
+            build/libs/*.jar
+            !build/libs/*-sources.jar
+          if-no-files-found: error
+
+      - name: Release BlockFLow
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: BlockFLow ${{ github.ref_name }}
+          files: |
+            build/libs/*.jar
+            !build/libs/*-sources.jar

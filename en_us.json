@@ -1,0 +1,10 @@
+{
+  "key.category.blockflow.main": "BlockFLow",
+  "key.blockflow.pos1": "Set point 1",
+  "key.blockflow.pos2": "Set point 2",
+  "key.blockflow.copy": "Copy selection",
+  "key.blockflow.rotate": "Rotate 90°",
+  "key.blockflow.place": "Place hologram here",
+  "key.blockflow.build": "Start / pause auto-build",
+  "key.blockflow.clear": "Clear all"
+}
