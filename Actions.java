@@ -138,6 +138,36 @@ final class Actions {
         Msg.chat("Blokow na tick: " + AutoBuilder.perTick);
     }
 
+    static void noclip() {
+        AutoBuilder.noclip = !AutoBuilder.noclip;
+        Msg.chat("Noclip podczas auto-budowy (creative): " + (AutoBuilder.noclip ? "WLACZONY" : "wylaczony (trasa nad budowla)"));
+    }
+
+    /** Wyciaga gracza z blokow: przesuwa w gore do pierwszego wolnego miejsca (2 bloki wysokosci). */
+    static void unstuck(boolean announce) {
+        Minecraft mc = Minecraft.getInstance();
+        var p = mc.player;
+        var lv = mc.level;
+        if (p == null || lv == null) return;
+        BlockPos bp = p.blockPosition();
+        for (int dy = 0; dy <= 64; dy++) {
+            BlockPos feet = bp.above(dy);
+            BlockPos head = feet.above();
+            boolean free = lv.getBlockState(feet).getCollisionShape(lv, feet).isEmpty()
+                    && lv.getBlockState(head).getCollisionShape(lv, head).isEmpty();
+            if (free) {
+                if (dy > 0) {
+                    p.setPos(p.getX(), feet.getY(), p.getZ());
+                    Msg.chat("Wyciagnieto z blokow (o " + dy + " w gore).");
+                } else if (announce) {
+                    Msg.chat("Nie jestes w blokach.");
+                }
+                return;
+            }
+        }
+        if (announce) Msg.chat("Nie znaleziono wolnego miejsca w gore - uzyj /tp.");
+    }
+
     static void replace() {
         AutoBuilder.replace = !AutoBuilder.replace;
         Msg.chat("Niszczenie przeszkadzajacych blokow: " + (AutoBuilder.replace ? "TAK" : "nie"));

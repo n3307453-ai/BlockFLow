@@ -39,6 +39,9 @@ public final class Flow {
     static BlockState[] ws = new BlockState[0];
     static boolean[] done = new boolean[0];
     static boolean[] skip = new boolean[0];
+    static boolean[] approx = new boolean[0];   // zaakceptowane z przyblizonym stanem
+    static int maxDoneY = Integer.MIN_VALUE;     // najwyzszy potwierdzony blok planu
+    static boolean scanWrapped;                  // czy skan przeszedl caly plan
     static int[] order = new int[0];  // kolejnosc budowy: warstwami od dolu
     static int doneCount, scanCursor;
 
@@ -92,6 +95,8 @@ public final class Flow {
     }
 
     private static void rebuildInner() {
+        maxDoneY = Integer.MIN_VALUE;
+        scanWrapped = false;
         doneCount = 0;
         scanCursor = 0;
         visN = 0;
@@ -101,6 +106,7 @@ public final class Flow {
             ws = new BlockState[0];
             done = new boolean[0];
             skip = new boolean[0];
+            approx = new boolean[0];
             order = new int[0];
             return;
         }
@@ -109,6 +115,7 @@ public final class Flow {
         ws = new BlockState[n];
         done = new boolean[n];
         skip = new boolean[n];
+        approx = new boolean[n];
         long[] keys = new long[n];
 
         for (int i = 0; i < n; i++) {
@@ -180,12 +187,15 @@ public final class Flow {
         for (int j = 0; j < k; j++) {
             int i = scanCursor;
             scanCursor = (scanCursor + 1) % n;
+            if (scanCursor == 0) scanWrapped = true;
             mp.set(wx[i], wy[i], wz[i]);
-            boolean ok = lv.getBlockState(mp).getBlock() == ws[i].getBlock();
+            BlockState st = lv.getBlockState(mp);
+            boolean ok = Match.same(st, ws[i]) || (approx[i] && st.getBlock() == ws[i].getBlock());
             if (ok != done[i]) {
                 done[i] = ok;
                 doneCount += ok ? 1 : -1;
             }
+            if (ok && wy[i] > maxDoneY) maxDoneY = wy[i];
         }
     }
 
