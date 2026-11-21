@@ -224,7 +224,6 @@ final class AutoBuilder {
 
         give(p, gm, item);
         gm.useItemOn(p, InteractionHand.MAIN_HAND, hit);
-        p.swing(InteractionHand.MAIN_HAND);
         progressed = true;
         placedCount++;
         if (++attempts[i] > 6) { Flow.skip[i] = true; skippedCount++; }

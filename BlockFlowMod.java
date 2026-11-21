@@ -1,6 +1,5 @@
 package pl.blockflow;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -9,7 +8,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * BlockFLow - czysto kliencki mod (dziala na kazdym serwerze, serwer nie musi go miec).
@@ -24,13 +22,13 @@ public final class BlockFlowMod implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         KeyMapping.Category cat = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
-        kPos1 = key("pos1", GLFW.GLFW_KEY_LEFT_BRACKET, cat);
-        kPos2 = key("pos2", GLFW.GLFW_KEY_RIGHT_BRACKET, cat);
-        kCopy = key("copy", GLFW.GLFW_KEY_SEMICOLON, cat);
-        kRotate = key("rotate", GLFW.GLFW_KEY_APOSTROPHE, cat);
-        kPlace = key("place", GLFW.GLFW_KEY_BACKSLASH, cat);
-        kBuild = key("build", GLFW.GLFW_KEY_PERIOD, cat);
-        kClear = key("clear", GLFW.GLFW_KEY_EQUAL, cat);
+        kPos1 = key("pos1", 91, cat);
+        kPos2 = key("pos2", 93, cat);
+        kCopy = key("copy", 59, cat);
+        kRotate = key("rotate", 39, cat);
+        kPlace = key("place", 92, cat);
+        kBuild = key("build", 46, cat);
+        kClear = key("clear", 61, cat);
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> Cmds.register(dispatcher));
         ClientTickEvents.END_CLIENT_TICK.register(BlockFlowMod::tick);
@@ -39,7 +37,7 @@ public final class BlockFlowMod implements ClientModInitializer {
 
     private static KeyMapping key(String id, int glfw, KeyMapping.Category cat) {
         return KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key." + MOD_ID + "." + id, InputConstants.Type.KEYSYM, glfw, cat));
+                new KeyMapping("key." + MOD_ID + "." + id, glfw, cat));
     }
 
     private static void tick(Minecraft mc) {
