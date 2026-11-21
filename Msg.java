@@ -13,6 +13,12 @@ final class Msg {
     private static int kind = -1;          // -1 nie szukano, -2 brak, 0/1/2 = wariant
     private static Method method;
 
+    /** Log do konsoli/latest.log (System.err trafia do logu gry). */
+    static void log(String what, Throwable t) {
+        System.err.println("[BlockFLow] " + what);
+        if (t != null) t.printStackTrace();
+    }
+
     static void chat(String s) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) mc.player.sendSystemMessage(Component.literal("\u00a7b[BlockFLow] \u00a7f" + s));
