@@ -208,7 +208,7 @@ final class Builtin {
         BlockState oak = Blocks.OAK_PLANKS.defaultBlockState();
         BlockState fence = Blocks.OAK_FENCE.defaultBlockState();
         BlockState log = Blocks.OAK_LOG.defaultBlockState();
-        BlockState wool = Blocks.WHITE_WOOL.defaultBlockState();
+        BlockState wool = Blocks.QUARTZ_BLOCK.defaultBlockState();
         BlockState glass = Blocks.GLASS.defaultBlockState();
 
         for (int z = 0; z < 25; z++) {
@@ -241,8 +241,8 @@ final class Builtin {
     // ------------------------------------------------------------------ hotel
     private static B hotel() {
         B b = new B(17, 20, 14);
-        BlockState wall = Blocks.WHITE_CONCRETE.defaultBlockState();
-        BlockState quartz = Blocks.QUARTZ_BLOCK.defaultBlockState();
+        BlockState wall = Blocks.QUARTZ_BLOCK.defaultBlockState();
+        BlockState quartz = Blocks.POLISHED_ANDESITE.defaultBlockState();   // naroza i attyka
         BlockState glass = Blocks.GLASS.defaultBlockState();
         BlockState slab = Blocks.SMOOTH_STONE.defaultBlockState();
         BlockState gold = Blocks.GOLD_BLOCK.defaultBlockState();
@@ -271,10 +271,10 @@ final class Builtin {
     // ------------------------------------------------------------------ blok radziecki
     private static B blokRadziecki() {
         B b = new B(36, 24, 12);
-        BlockState panel = Blocks.LIGHT_GRAY_CONCRETE.defaultBlockState();
-        BlockState seam = Blocks.GRAY_CONCRETE.defaultBlockState();
+        BlockState panel = Blocks.SMOOTH_STONE.defaultBlockState();
+        BlockState seam = Blocks.POLISHED_ANDESITE.defaultBlockState();
         BlockState glass = Blocks.GLASS.defaultBlockState();
-        BlockState slab = Blocks.SMOOTH_STONE.defaultBlockState();
+        BlockState slab = Blocks.COBBLESTONE.defaultBlockState();
         BlockState pane = Blocks.GLASS_PANE.defaultBlockState();
         BlockState brick = Blocks.BRICKS.defaultBlockState();
 
@@ -347,14 +347,14 @@ final class Builtin {
     private static B latarnia() {
         B b = new B(11, 26, 11);
         int c = 5;
-        BlockState white = Blocks.WHITE_CONCRETE.defaultBlockState();
-        BlockState red = Blocks.RED_CONCRETE.defaultBlockState();
+        BlockState white = Blocks.QUARTZ_BLOCK.defaultBlockState();
+        BlockState red = Blocks.BRICKS.defaultBlockState();
         BlockState stone = Blocks.STONE_BRICKS.defaultBlockState();
         BlockState plank = Blocks.DARK_OAK_PLANKS.defaultBlockState();
         BlockState fence = Blocks.OAK_FENCE.defaultBlockState();
         BlockState glass = Blocks.GLASS.defaultBlockState();
         BlockState lamp = Blocks.SEA_LANTERN.defaultBlockState();
-        BlockState roof = Blocks.BLACK_CONCRETE.defaultBlockState();
+        BlockState roof = Blocks.DARK_OAK_PLANKS.defaultBlockState();
 
         for (int x = 0; x < 11; x++)
             for (int z = 0; z < 11; z++) {
