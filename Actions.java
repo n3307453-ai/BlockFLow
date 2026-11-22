@@ -138,11 +138,6 @@ final class Actions {
         Msg.chat("Blokow na tick: " + AutoBuilder.perTick);
     }
 
-    static void noclip() {
-        AutoBuilder.noclip = !AutoBuilder.noclip;
-        Msg.chat("Lot podczas auto-budowy: " + (AutoBuilder.noclip ? "SUROWY noclip (serwer vanilla moze cofac)" : "bezkolizyjny (domyslny, omija bloki)"));
-    }
-
     /** Wyciaga gracza z blokow: przesuwa w gore do pierwszego wolnego miejsca (2 bloki wysokosci). */
     static void unstuck(boolean announce) {
         Minecraft mc = Minecraft.getInstance();

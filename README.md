@@ -22,16 +22,16 @@ Klawisze zmienisz w Opcje → Sterowanie → BlockFLow.
 `start`, `pause`/`stop`, `clear`, `status`, `list`,
 `layer [n]` (pokaż tylko najniższe n niedokończonych warstw), `range n` (zasięg podglądu),
 `speed 1-8` (bloków na tick), `replace` (czy niszczyć przeszkadzające bloki w creative),
-`noclip` (przełącznik lotu przez bloki podczas auto-budowy), `unstuck` (wyciąga Cię z bloków).
+`unstuck` (wyciąga Cię z bloków).
 
 ## Menu i sloty (prawy Shift)
-- **Prawy Shift** (lub `/bf menu`) otwiera menu: **10 slotów na własne budowle** (2 strony po 5) i strona z **gotowymi schematami** (domek, wieża, piramida, mur, platforma).
+- **Prawy Shift** (lub `/bf menu`) otwiera menu: **10 slotów na własne budowle** (2 strony po 5) i strona z **gotowymi schematami** (domek, wieża, piramida, mur, platforma, **zamek, statek, hotel, blok radziecki, bank, latarnia, willa, most**).
 - **Zapisz** zapisuje aktualny schowek (najpierw zaznacz i `copy`), **Wczytaj** wrzuca slot do schowka, **Usuń** czyści slot.
 - **Postaw na celowniku** ustawia hologram tam, gdzie patrzysz; dalej `start` jak zwykle.
 - Sloty leżą w `config/blockflow/slotN.bfs` (możesz je kopiować między komputerami).
 
 ## Jak lata i stawia (creative)
-- **Lot bezkolizyjny (domyślny):** mod planuje trasę po wolnych miejscach (prosto, a gdy zablokowane – nad przeszkodami), więc nigdy nie wchodzi w bloki i serwer niczego nie cofa. Prawdziwy noclip przez bloki **nie działa na serwerze vanilla** – serwer sam sprawdza kolizje i cofa gracza. Surowy noclip zostaje jako opcja (`/bf noclip`), ale zwykły serwer go cofnie.
+- **Budowa warstwami:** od podłogi w górę, cała warstwa (jeden poziom Y) jest kończona, zanim bot wzniesie się wyżej. Bot leci nad bieżącą warstwą po wolnych miejscach, więc nie wchodzi w postawione bloki i serwer niczego nie cofa (noclip usunięty – na serwerze vanilla i tak by nie działał).
 - **Stawianie 1:1:** dla każdego bloku do 3 sposobów (obrót gracza, klikana ściana, oś), sprawdzenie wyniku, w razie błędu burzenie i próba kolejnego. Rusztowanie rośnie w górę.
 - **Bezpieczniki:** gdy sam ruszysz się (W/A/S/D/spacja/shift), bot oddaje sterowanie. Bot, który nic nie robi ok. 5 s, pomija blok. Po pauzie/końcu jesteś wyciągany z bloków (`/bf unstuck` ręcznie).
 

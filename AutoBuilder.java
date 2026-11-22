@@ -27,8 +27,8 @@ import java.util.List;
 /**
  * Auto-budowa (TYLKO creative), czysto po stronie klienta.
  *
- * Lot: domyslnie "bezkolizyjny" - trasa po wolnych miejscach (Fly), wiec serwer nic nie cofa.
- * Surowy noclip (/bf noclip) leci prosto przez bloki - na serwerze vanilla zostanie cofniety.
+ * Budowa WARSTWAMI: od podlogi w gore, cala warstwa przed nastepna. Bot leci nad biezaca warstwa
+ * (trasa po wolnych miejscach - Fly), wiec nie wchodzi w postawione bloki i serwer niczego nie cofa.
  *
  * Bezpieczniki: wlasny ruch gracza (WASD/spacja/shift) wstrzymuje bota; bot, ktory nic nie robi,
  * pomija blok; po pauzie/koncu gracz jest wyciagany z blokow.
@@ -38,7 +38,6 @@ final class AutoBuilder {
 
     static final int HOT = 8;            // slot paska, ktory "pozyczamy" (potem oddajemy)
     static final double REACH = 4.2;     // max odleglosc oka od srodka bloku przy stawianiu
-    static final double HOVER = 3.2;     // oko nad blokiem docelowym (tryb surowego noclipa)
 
     static boolean running;
     static int cursor;
@@ -53,7 +52,6 @@ final class AutoBuilder {
     static double speed = 0.45;          // blokow/tick podczas lotu
     static int perTick = 1;              // ile blokow na tick
     static boolean replace = false;      // czy niszczyc przeszkadzajace (obce) bloki
-    static boolean noclip = false;       // SUROWY noclip (domyslnie wylaczony - lot bezkolizyjny)
 
     private static int flyingTo = -1;
     private static List<Vec3> path;
@@ -62,6 +60,11 @@ final class AutoBuilder {
     private static Vec3 expected;
     private static int rubber, idle, idleSkips, manualTicks;
     private static boolean moved;
+
+    // budowa warstwami od podlogi w gore
+    private static int layerY = Integer.MIN_VALUE;
+    private static int layerStart;
+    private static boolean layerProgress;
 
     private static ItemStack saved = ItemStack.EMPTY;
     private static int savedSel = -1;
@@ -84,6 +87,9 @@ final class AutoBuilder {
         idle = 0;
         idleSkips = 0;
         manualTicks = 0;
+        layerY = Integer.MIN_VALUE;
+        layerStart = 0;
+        layerProgress = false;
         deferred = new boolean[Flow.n];
         attempts = new int[Flow.n];
         destroys = new int[Flow.n];
@@ -123,7 +129,7 @@ final class AutoBuilder {
             resetFlight();
         }
         running = true;
-        Msg.chat("Budowa wystartowala (lot: " + (noclip ? "surowy noclip" : "bezkolizyjny") + "). "
+        Msg.chat("Budowa warstwami od podlogi w gore wystartowala. "
                 + "Pauza: ten sam klawisz, /bf pause albo po prostu sam sie poruszaj.");
     }
 
@@ -225,13 +231,38 @@ final class AutoBuilder {
         if (Flow.wy[i] > Flow.maxDoneY) Flow.maxDoneY = Flow.wy[i];
     }
 
-    /** Nastepny indeks planu do postawienia albo -1. */
+    /** Czy w biezacej warstwie zostaly bloki odlozone (bez podparcia). */
+    private static boolean layerHasDeferred(int end) {
+        for (int k = layerStart; k < end; k++) {
+            int j = Flow.order[k];
+            if (deferred[j] && !Flow.skip[j] && !Flow.done[j]) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Nastepny indeks planu do postawienia albo -1.
+     * Budowa WARSTWAMI: cala warstwa (jeden poziom Y) jest konczona, zanim bot wzniesie sie wyzej.
+     * Bloki bez podparcia w warstwie sa ponawiane po reszcie tej samej warstwy.
+     */
     private static int next(ClientLevel lv) {
         int n = Flow.n;
         BlockPos.MutableBlockPos mp = new BlockPos.MutableBlockPos();
         while (true) {
             while (cursor < n) {
                 int i = Flow.order[cursor];
+                if (Flow.wy[i] != layerY) {
+                    // koniec warstwy: jesli cos czeka na podparcie, a w warstwie cos postawilismy - ponow
+                    if (layerProgress && layerHasDeferred(cursor)) {
+                        for (int k = layerStart; k < cursor; k++) deferred[Flow.order[k]] = false;
+                        cursor = layerStart;
+                        layerProgress = false;
+                        continue;
+                    }
+                    layerY = Flow.wy[i];
+                    layerStart = cursor;
+                    layerProgress = false;
+                }
                 if (Flow.skip[i] || deferred[i]) { cursor++; continue; }
                 mp.set(Flow.wx[i], Flow.wy[i], Flow.wz[i]);
                 if (Match.same(lv.getBlockState(mp), Flow.ws[i])) {
@@ -241,11 +272,19 @@ final class AutoBuilder {
                 }
                 return i;
             }
+            // koniec planu: ostatnia warstwa
+            if (layerProgress && layerHasDeferred(n)) {
+                for (int k = layerStart; k < n; k++) deferred[Flow.order[k]] = false;
+                cursor = layerStart;
+                layerProgress = false;
+                continue;
+            }
             boolean anyDeferred = false;
             for (boolean b : deferred) if (b) { anyDeferred = true; break; }
-            if (anyDeferred && progressed) {
+            if (anyDeferred && progressed) {          // przebieg koncowy dla reszty
                 Arrays.fill(deferred, false);
                 cursor = 0;
+                layerY = Integer.MIN_VALUE;
                 progressed = false;
                 continue;
             }
@@ -268,13 +307,11 @@ final class AutoBuilder {
         }
 
         // --- lot: jesli jestesmy w zasiegu i w wolnym miejscu, stawiamy bez ruszania sie
-        boolean inReach = dist <= REACH - 0.2 && (noclip || Fly.freeAt(lv, p.getX(), p.getY(), p.getZ()));
+        boolean inReach = dist <= REACH - 0.2 && Fly.freeAt(lv, p.getX(), p.getY(), p.getZ());
         if (flyingTo != i && !inReach) {
-            Vec3 hover = noclip
-                    ? new Vec3(c.x, c.y + HOVER - eyeH, c.z)
-                    : Fly.pickHover(lv, c, eyeH, REACH - 0.3);
+            Vec3 hover = Fly.pickHover(lv, c, eyeH, REACH - 0.3);   // nad aktualna warstwa
             if (hover == null) { skip(i); return false; }           // zewsząd zablokowane
-            List<Vec3> pth = noclip ? List.of(hover) : Fly.plan(lv, p.position(), hover, topBuilt());
+            List<Vec3> pth = Fly.plan(lv, p.position(), hover, topBuilt());
             if (pth == null) {
                 if (!Fly.freeAt(lv, p.getX(), p.getY(), p.getZ())) {   // utknal w bloku
                     Actions.unstuck(false);
@@ -369,6 +406,7 @@ final class AutoBuilder {
         give(p, gm, item);
         gm.useItemOn(p, InteractionHand.MAIN_HAND, hit);
         progressed = true;
+        layerProgress = true;
         placedCount++;
         if (pos.getY() > maxPlacedY) maxPlacedY = pos.getY();
         if (++attempts[i] > 6) skip(i);
@@ -399,7 +437,7 @@ final class AutoBuilder {
             expected = null;
             if (rubber >= 8) {
                 rubber = 0;
-                Msg.chat("Serwer ciagle cofa gracza - zatrzymuje bota. Sprobuj /bf noclip (przelacznik) lub sprawdz uprawnienia.");
+                Msg.chat("Serwer ciagle cofa gracza - zatrzymuje bota. Sprawdz uprawnienia / zasady serwera.");
                 running = false;
             }
             return false;
@@ -416,7 +454,7 @@ final class AutoBuilder {
         } else {
             np = pos.add(d.scale(speed / len));
         }
-        if (!noclip && !Fly.freeAt(lv, np.x, np.y, np.z)) {   // swiat sie zmienil - przeliczymy trase
+        if (!Fly.freeAt(lv, np.x, np.y, np.z)) {   // swiat sie zmienil - przeliczymy trase
             path = null;
             flyingTo = -1;
             return false;

@@ -56,7 +56,6 @@ final class Cmds {
                         .then(ClientCommands.argument("n", IntegerArgumentType.integer(1, 8))
                                 .executes(c -> { Actions.speed(IntegerArgumentType.getInteger(c, "n")); return 1; })))
                 .then(lit("replace", Actions::replace))
-                .then(lit("noclip", Actions::noclip))
                 .then(lit("menu", Ui::openMenuNextTick))
                 .then(lit("unstuck", () -> Actions.unstuck(true)));
     }

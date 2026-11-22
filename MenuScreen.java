@@ -10,7 +10,8 @@ import net.minecraft.network.chat.Component;
  * Zapisz = zapisuje aktualny schowek (po copy). Wczytaj = wrzuca do schowka. Postaw = hologram w miejscu celownika.
  */
 public final class MenuScreen extends Screen {
-    private static final int PAGES = 3;      // 0: sloty 1-5, 1: sloty 6-10, 2: gotowe schematy
+    // 0: sloty 1-5, 1: sloty 6-10, 2..: gotowe schematy (po 5 na strone)
+    private static int pages() { return 2 + (Builtin.NAMES.length + 4) / 5; }
     private static int page = 0;
 
     private final String[] labels = new String[5];
@@ -47,9 +48,9 @@ public final class MenuScreen extends Screen {
                     Schem.delete(slot);
                     this.rebuildWidgets();
                 }).bounds(bx + 114, y, 40, 20).build());
-            } else if (r < Builtin.NAMES.length) {
-                final int idx = r;
-                labels[r] = Builtin.NAMES[r];
+            } else if ((page - 2) * 5 + r < Builtin.NAMES.length) {
+                final int idx = (page - 2) * 5 + r;
+                labels[r] = Builtin.NAMES[idx];
                 this.addRenderableWidget(Button.builder(Component.literal("Wczytaj"), b -> {
                     Msg.chat(Builtin.load(idx));
                     this.rebuildWidgets();
@@ -61,11 +62,11 @@ public final class MenuScreen extends Screen {
 
         int by = top + 5 * row + 6;
         this.addRenderableWidget(Button.builder(Component.literal("<"), b -> {
-            page = (page + PAGES - 1) % PAGES;
+            page = (page + pages() - 1) % pages();
             this.rebuildWidgets();
         }).bounds(left, by, 30, 20).build());
         this.addRenderableWidget(Button.builder(Component.literal(">"), b -> {
-            page = (page + 1) % PAGES;
+            page = (page + 1) % pages();
             this.rebuildWidgets();
         }).bounds(left + 35, by, 30, 20).build());
         this.addRenderableWidget(Button.builder(Component.literal("Postaw na celowniku"), b -> {
@@ -82,9 +83,9 @@ public final class MenuScreen extends Screen {
         int cx = this.width / 2;
         int left = cx - 190;
         String title = page < 2 ? "BlockFLow - moje budowle (sloty " + (page * 5 + 1) + "-" + (page * 5 + 5) + ")"
-                : "BlockFLow - gotowe schematy";
+                : "BlockFLow - gotowe schematy (" + (page - 1) + "/" + (pages() - 2) + ")";
         graphics.text(this.font, title, left, 16, 0xFFFFFFFF, true);
-        graphics.text(this.font, "Strona " + (page + 1) + "/" + PAGES, left, 28, 0xFFAAAAAA, true);
+        graphics.text(this.font, "Strona " + (page + 1) + "/" + pages(), left, 28, 0xFFAAAAAA, true);
         for (int r = 0; r < 5; r++) {
             if (labels[r] == null || labels[r].isEmpty()) continue;
             String t = labels[r].length() > 28 ? labels[r].substring(0, 27) + "~" : labels[r];
