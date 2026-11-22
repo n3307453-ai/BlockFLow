@@ -22,26 +22,23 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Auto-budowa (TYLKO creative), czysto po stronie klienta.
  *
- * Ruch:
- *  - noclip (domyslnie wlaczony, tylko w trakcie auto-budowy w creative): bot leci prosto do celu
- *    przez bloki. Serwer musi na to pozwalac (wlasny serwer: wylacz sprawdzanie ruchu gracza
- *    gamerule'em). Jesli serwer cofa gracza, mod sam przelacza sie na trase nad budowla.
- *  - bez noclipa: trasa NAD cala dotychczasowa budowla, opadanie dopiero nad celem.
+ * Lot: domyslnie "bezkolizyjny" - trasa po wolnych miejscach (Fly), wiec serwer nic nie cofa.
+ * Surowy noclip (/bf noclip) leci prosto przez bloki - na serwerze vanilla zostanie cofniety.
  *
- * Bezpieczniki: wlasny ruch gracza (WASD/spacja/shift) od razu wstrzymuje bota; bot, ktory sie
- * zacina, pomija blok; po pauzie/koncu gracz jest wyciagany z blokow.
+ * Bezpieczniki: wlasny ruch gracza (WASD/spacja/shift) wstrzymuje bota; bot, ktory nic nie robi,
+ * pomija blok; po pauzie/koncu gracz jest wyciagany z blokow.
  */
 final class AutoBuilder {
     private AutoBuilder() {}
 
     static final int HOT = 8;            // slot paska, ktory "pozyczamy" (potem oddajemy)
     static final double REACH = 4.2;     // max odleglosc oka od srodka bloku przy stawianiu
-    static final double HOVER = 3.2;     // oko nad blokiem docelowym (nogi nad warstwa)
-    static final double CRUISE = 4.0;    // oko nad najwyzszym postawionym blokiem w locie (bez noclipa)
+    static final double HOVER = 3.2;     // oko nad blokiem docelowym (tryb surowego noclipa)
 
     static boolean running;
     static int cursor;
@@ -49,8 +46,6 @@ final class AutoBuilder {
     static boolean[] deferred = new boolean[0];
     static int[] attempts = new int[0];
     static int[] destroys = new int[0];
-    static int stuck, lastTarget = -1;
-    static double lastDist;
     static int placedCount, skippedCount, approxCount, destroyCount;
     static int targetIdx = -1;
     static int maxPlacedY = Integer.MIN_VALUE;
@@ -58,10 +53,12 @@ final class AutoBuilder {
     static double speed = 0.45;          // blokow/tick podczas lotu
     static int perTick = 1;              // ile blokow na tick
     static boolean replace = false;      // czy niszczyc przeszkadzajace (obce) bloki
-    static boolean noclip = true;        // lot przez bloki (tylko podczas auto-budowy w creative)
+    static boolean noclip = false;       // SUROWY noclip (domyslnie wylaczony - lot bezkolizyjny)
 
-    private static boolean usedNoclip;
     private static int flyingTo = -1;
+    private static List<Vec3> path;
+    private static int pathIdx;
+    private static int replans;
     private static Vec3 expected;
     private static int rubber, idle, idleSkips, manualTicks;
     private static boolean moved;
@@ -76,16 +73,13 @@ final class AutoBuilder {
     static void reset() {
         cursor = 0;
         progressed = false;
-        stuck = 0;
-        lastTarget = -1;
         targetIdx = -1;
         placedCount = 0;
         skippedCount = 0;
         approxCount = 0;
         destroyCount = 0;
         maxPlacedY = Integer.MIN_VALUE;
-        flyingTo = -1;
-        expected = null;
+        resetFlight();
         rubber = 0;
         idle = 0;
         idleSkips = 0;
@@ -95,11 +89,24 @@ final class AutoBuilder {
         destroys = new int[Flow.n];
     }
 
+    private static void resetFlight() {
+        flyingTo = -1;
+        path = null;
+        pathIdx = 0;
+        replans = 0;
+        expected = null;
+    }
+
+    static double topBuilt() {
+        int t = Flow.scanWrapped ? Math.max(Flow.maxDoneY, maxPlacedY) : Flow.anchor.getY() + Flow.sy;
+        return t;
+    }
+
     // ------------------------------------------------------------------ sterowanie
     static void start(Minecraft mc) {
         LocalPlayer p = mc.player;
         if (p == null || mc.gameMode == null) return;
-        if (Flow.n == 0) { Msg.chat("Brak planu. Zrob: pos1, pos2, copy, place."); return; }
+        if (Flow.n == 0) { Msg.chat("Brak planu. Zrob: pos1, pos2, copy, place (albo menu: prawy Shift)."); return; }
         if (!p.isCreative()) {
             Msg.chat("Auto-budowa dziala tylko w creative. W survivalu masz podglad i /blockflow list.");
             return;
@@ -113,11 +120,10 @@ final class AutoBuilder {
             idleSkips = 0;
             manualTicks = 0;
             rubber = 0;
-            flyingTo = -1;
-            expected = null;
+            resetFlight();
         }
         running = true;
-        Msg.chat("Budowa wystartowala (noclip: " + (noclip ? "TAK" : "nie") + "). "
+        Msg.chat("Budowa wystartowala (lot: " + (noclip ? "surowy noclip" : "bezkolizyjny") + "). "
                 + "Pauza: ten sam klawisz, /bf pause albo po prostu sam sie poruszaj.");
     }
 
@@ -134,12 +140,8 @@ final class AutoBuilder {
     }
 
     private static void afterStop() {
-        flyingTo = -1;
-        expected = null;
-        if (usedNoclip) {
-            usedNoclip = false;
-            Actions.unstuck(false);
-        }
+        resetFlight();
+        Actions.unstuck(false);
     }
 
     private static void restore(Minecraft mc) {
@@ -158,7 +160,7 @@ final class AutoBuilder {
     static void abort() {
         running = false;
         hasSaved = false;
-        usedNoclip = false;
+        resetFlight();
     }
 
     // ------------------------------------------------------------------ petla
@@ -198,6 +200,7 @@ final class AutoBuilder {
         } else if (++idle > 100) {
             idle = 0;
             if (targetIdx >= 0 && targetIdx < Flow.n) skip(targetIdx);
+            resetFlight();
             if (++idleSkips > 5) {
                 idleSkips = 0;
                 Msg.chat("Bot sie zacial - pauza. Sprawdz /bf status albo /bf unstuck.");
@@ -256,6 +259,7 @@ final class AutoBuilder {
         Vec3 c = Vec3.atCenterOf(pos);
         Vec3 eye = p.getEyePosition();
         double dist = eye.distanceTo(c);
+        double eyeH = eye.y - p.getY();
 
         var ab = p.getAbilities();
         if (!ab.flying) {
@@ -263,21 +267,33 @@ final class AutoBuilder {
             p.onUpdateAbilities();
         }
 
-        // --- lot
-        boolean far = dist > REACH;
-        if (noclip) {
-            if (far) flyingTo = i;
-            if (flyingTo == i) {
-                if (!flyNoclip(p, eye, c, i, dist)) return false;   // jeszcze lecimy
-                flyingTo = -1;
+        // --- lot: jesli jestesmy w zasiegu i w wolnym miejscu, stawiamy bez ruszania sie
+        boolean inReach = dist <= REACH - 0.2 && (noclip || Fly.freeAt(lv, p.getX(), p.getY(), p.getZ()));
+        if (flyingTo != i && !inReach) {
+            Vec3 hover = noclip
+                    ? new Vec3(c.x, c.y + HOVER - eyeH, c.z)
+                    : Fly.pickHover(lv, c, eyeH, REACH - 0.3);
+            if (hover == null) { skip(i); return false; }           // zewsząd zablokowane
+            List<Vec3> pth = noclip ? List.of(hover) : Fly.plan(lv, p.position(), hover, topBuilt());
+            if (pth == null) {
+                if (!Fly.freeAt(lv, p.getX(), p.getY(), p.getZ())) {   // utknal w bloku
+                    Actions.unstuck(false);
+                    return false;
+                }
+                if (++replans > 3) { skip(i); replans = 0; }
+                return false;
             }
-        } else if (far) {
-            flyRoute(p, eye, c, i, dist);
-            return false;
+            path = pth;
+            pathIdx = 0;
+            flyingTo = i;
+            replans = 0;
+        }
+        if (flyingTo == i) {
+            if (!follow(p, lv, c)) return false;     // jeszcze lecimy
+            flyingTo = -1;
         }
         expected = null;
         p.setDeltaMovement(Vec3.ZERO);
-        stuck = 0;
 
         BlockState want = Flow.ws[i];
         BlockState cur = lv.getBlockState(pos);
@@ -361,75 +377,56 @@ final class AutoBuilder {
     private static void skip(int i) {
         Flow.skip[i] = true;
         skippedCount++;
+        resetFlight();
     }
 
     // ------------------------------------------------------------------ lot
     /**
-     * Noclip: ustawiamy pozycje bezposrednio (bez kolizji klienta), prosto do punktu nad celem.
-     * @return true gdy dotarlismy
+     * Jeden krok lotu po trasie. Zwraca true dopiero w tyku PO dotarciu (serwer zdazy poznac pozycje).
      */
-    private static boolean flyNoclip(LocalPlayer p, Vec3 eye, Vec3 c, int i, double dist) {
-        usedNoclip = true;
-        Vec3 aim = new Vec3(c.x, c.y + HOVER, c.z);
-        Vec3 d = aim.subtract(eye);
-        double len = d.length();
-
-        // wykrywanie cofania przez serwer (rubber-banding)
-        if (expected != null && p.position().distanceTo(expected) > 1.0) {
-            if (++rubber >= 3) {
-                noclip = false;
-                expected = null;
-                flyingTo = -1;
-                Msg.chat("Serwer cofa gracza - wylaczam noclip, lece trasa nad budowla. "
-                        + "Na wlasnym serwerze wylacz sprawdzanie ruchu gracza (gamerule).");
-                return false;
-            }
-        }
-
-        p.setDeltaMovement(Vec3.ZERO);
-        if (len < 0.3) {
+    private static boolean follow(LocalPlayer p, ClientLevel lv, Vec3 target) {
+        if (path != null && pathIdx >= path.size()) {   // dotarlismy w poprzednim ticku
             expected = null;
             return true;
         }
-        Vec3 step = d.scale(Math.min(speed, len) / len);
-        Vec3 np = p.position().add(step);
+        if (path == null) { flyingTo = -1; return false; }
+
+        // serwer cofnal gracza? (rubber-banding)
+        if (expected != null && p.position().distanceTo(expected) > 0.7) {
+            rubber++;
+            path = null;
+            flyingTo = -1;
+            expected = null;
+            if (rubber >= 8) {
+                rubber = 0;
+                Msg.chat("Serwer ciagle cofa gracza - zatrzymuje bota. Sprobuj /bf noclip (przelacznik) lub sprawdz uprawnienia.");
+                running = false;
+            }
+            return false;
+        }
+
+        Vec3 pos = p.position();
+        Vec3 tgt = path.get(pathIdx);
+        Vec3 d = tgt.subtract(pos);
+        double len = d.length();
+        Vec3 np;
+        if (len <= speed) {
+            np = tgt;
+            pathIdx++;
+        } else {
+            np = pos.add(d.scale(speed / len));
+        }
+        if (!noclip && !Fly.freeAt(lv, np.x, np.y, np.z)) {   // swiat sie zmienil - przeliczymy trase
+            path = null;
+            flyingTo = -1;
+            return false;
+        }
         p.setPos(np.x, np.y, np.z);
+        p.setDeltaMovement(Vec3.ZERO);
         expected = np;
         moved = true;
-        lookAt(p, c);
+        lookAt(p, target);
         return false;
-    }
-
-    /** Bez noclipa: trasa nad cala dotychczasowa budowla, opadanie nad celem. */
-    private static void flyRoute(LocalPlayer p, Vec3 eye, Vec3 c, int i, double dist) {
-        int top = Flow.scanWrapped
-                ? Math.max(Flow.maxDoneY, maxPlacedY)
-                : Flow.anchor.getY() + Flow.sy;          // zanim skan pozna budowle: nad calym obrysem
-        double cruise = Math.max((double) top, c.y) + CRUISE;
-        double horiz = Math.hypot(c.x - eye.x, c.z - eye.z);
-
-        Vec3 aim;
-        if (horiz > 1.5) {
-            aim = (eye.y < cruise - 0.4)
-                    ? new Vec3(eye.x, cruise, eye.z)     // najpierw w gore
-                    : new Vec3(c.x, cruise, c.z);        // potem poziomo nad budowla
-        } else {
-            aim = new Vec3(c.x, c.y + HOVER, c.z);       // opadamy nad cel
-        }
-
-        Vec3 d = aim.subtract(eye);
-        double len = d.length();
-        if (len > 1.0E-6) p.setDeltaMovement(d.scale(Math.min(speed, len) / len));
-        lookAt(p, c);
-        moved = true;
-
-        if (i == lastTarget && Math.abs(dist - lastDist) < 0.01) stuck++; else stuck = 0;
-        lastTarget = i;
-        lastDist = dist;
-        if (stuck > 60) {               // utknal (np. strop terenu) - pomijamy
-            skip(i);
-            stuck = 0;
-        }
     }
 
     // ------------------------------------------------------------------ stawianie

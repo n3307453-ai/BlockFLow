@@ -88,6 +88,15 @@ public final class Flow {
         return "Skopiowano " + clip.length + " blokow (" + w + "x" + h + "x" + d + "). Teraz ustaw miejsce: /blockflow place";
     }
 
+    /** Podmienia schowek (np. wczytany z slotu albo gotowy schemat). */
+    static void setClipboard(Cell[] cells, int w, int h, int d) {
+        clip = cells;
+        sx = w; sy = h; sz = d;
+        rotation = Rotation.NONE;
+        mirror = Mirror.NONE;
+        rebuild();
+    }
+
     // ------------------------------------------------------------------ transformacja
     static void rebuild() {
         rebuildInner();

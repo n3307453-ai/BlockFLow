@@ -6,5 +6,6 @@
   "key.blockflow.rotate": "Rotate 90°",
   "key.blockflow.place": "Place hologram here",
   "key.blockflow.build": "Start / pause auto-build",
-  "key.blockflow.clear": "Clear all"
+  "key.blockflow.clear": "Clear all",
+  "key.blockflow.menu": "Open BlockFLow menu"
 }

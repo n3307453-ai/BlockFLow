@@ -140,7 +140,7 @@ final class Actions {
 
     static void noclip() {
         AutoBuilder.noclip = !AutoBuilder.noclip;
-        Msg.chat("Noclip podczas auto-budowy (creative): " + (AutoBuilder.noclip ? "WLACZONY" : "wylaczony (trasa nad budowla)"));
+        Msg.chat("Lot podczas auto-budowy: " + (AutoBuilder.noclip ? "SUROWY noclip (serwer vanilla moze cofac)" : "bezkolizyjny (domyslny, omija bloki)"));
     }
 
     /** Wyciaga gracza z blokow: przesuwa w gore do pierwszego wolnego miejsca (2 bloki wysokosci). */

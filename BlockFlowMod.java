@@ -19,7 +19,7 @@ import net.minecraft.resources.Identifier;
 public final class BlockFlowMod implements ClientModInitializer {
     public static final String MOD_ID = "blockflow";
 
-    static KeyMapping kPos1, kPos2, kCopy, kRotate, kPlace, kBuild, kClear;
+    static KeyMapping kPos1, kPos2, kCopy, kRotate, kPlace, kBuild, kClear, kMenu;
     private static int ticks;
     private static boolean tickFailed, renderFailed;
 
@@ -35,6 +35,7 @@ public final class BlockFlowMod implements ClientModInitializer {
             kPlace = key("place", 92, cat);
             kBuild = key("build", 46, cat);
             kClear = key("clear", 61, cat);
+            kMenu = key("menu", 344, cat);   // prawy Shift
         });
         step("komendy", () ->
                 ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> Cmds.register(dispatcher)));
@@ -86,6 +87,8 @@ public final class BlockFlowMod implements ClientModInitializer {
         while (pressed(kPlace)) Actions.place(null);
         while (pressed(kBuild)) Actions.toggleBuild();
         while (pressed(kClear)) Actions.clear();
+        while (pressed(kMenu)) Ui.openMenuNextTick();
+        Ui.tick();
 
         Flow.scan(mc.level);
         AutoBuilder.tick(mc);
