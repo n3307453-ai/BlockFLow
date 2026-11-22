@@ -19,7 +19,8 @@ import net.minecraft.resources.Identifier;
 public final class BlockFlowMod implements ClientModInitializer {
     public static final String MOD_ID = "blockflow";
 
-    static KeyMapping kPos1, kPos2, kCopy, kRotate, kPlace, kBuild, kClear, kMenu;
+    static KeyMapping kPos1, kPos2, kCopy, kRotate, kPlace, kBuild, kClear, kMenu,
+            kNFwd, kNBack, kNLeft, kNRight, kNUp, kNDown;
     private static int ticks;
     private static boolean tickFailed, renderFailed;
 
@@ -36,6 +37,12 @@ public final class BlockFlowMod implements ClientModInitializer {
             kBuild = key("build", 46, cat);
             kClear = key("clear", 61, cat);
             kMenu = key("menu", 344, cat);   // prawy Shift
+            kNFwd = key("nudge_fwd", 265, cat);     // strzalka w gore  = przod
+            kNBack = key("nudge_back", 264, cat);   // strzalka w dol   = tyl
+            kNLeft = key("nudge_left", 263, cat);   // strzalka w lewo
+            kNRight = key("nudge_right", 262, cat); // strzalka w prawo
+            kNUp = key("nudge_up", 266, cat);       // Page Up   = w gore
+            kNDown = key("nudge_down", 267, cat);   // Page Down = w dol
         });
         step("komendy", () ->
                 ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> Cmds.register(dispatcher)));
@@ -88,6 +95,12 @@ public final class BlockFlowMod implements ClientModInitializer {
         while (pressed(kBuild)) Actions.toggleBuild();
         while (pressed(kClear)) Actions.clear();
         while (pressed(kMenu)) Ui.openMenuNextTick();
+        while (pressed(kNFwd)) Actions.nudge("przod", Actions.step);
+        while (pressed(kNBack)) Actions.nudge("tyl", Actions.step);
+        while (pressed(kNLeft)) Actions.nudge("lewo", Actions.step);
+        while (pressed(kNRight)) Actions.nudge("prawo", Actions.step);
+        while (pressed(kNUp)) Actions.nudge("gora", Actions.step);
+        while (pressed(kNDown)) Actions.nudge("dol", Actions.step);
         Ui.tick();
 
         Flow.scan(mc.level);

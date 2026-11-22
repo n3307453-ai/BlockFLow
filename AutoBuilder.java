@@ -12,6 +12,8 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.FallingBlock;
 import net.minecraft.world.level.block.ScaffoldingBlock;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -21,8 +23,12 @@ import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Auto-budowa (TYLKO creative), czysto po stronie klienta.
@@ -52,6 +58,7 @@ final class AutoBuilder {
     static double speed = 0.45;          // blokow/tick podczas lotu
     static int perTick = 1;              // ile blokow na tick
     static boolean replace = false;      // czy niszczyc przeszkadzajace (obce) bloki
+    static boolean useTemps = true;      // tymczasowe podpory dla blokow wiszacych w powietrzu
 
     private static int flyingTo = -1;
     private static List<Vec3> path;
@@ -60,6 +67,15 @@ final class AutoBuilder {
     private static Vec3 expected;
     private static int rubber, idle, idleSkips, manualTicks;
     private static boolean moved;
+    private static boolean approachFailed;
+
+    // tymczasowe podpory (stawiane, a po postawieniu docelowego bloku zdejmowane)
+    private static final int AUX_KEY = Integer.MIN_VALUE + 7;
+    private static final ArrayDeque<BlockPos> tempQueue = new ArrayDeque<>();
+    private static final ArrayList<BlockPos> tempPlaced = new ArrayList<>();
+    private static final ArrayDeque<BlockPos> removeQueue = new ArrayDeque<>();
+    private static int tempFor = -1;
+    private static int[] tempRounds = new int[0];
 
     // budowa warstwami od podlogi w gore
     private static int layerY = Integer.MIN_VALUE;
@@ -93,6 +109,12 @@ final class AutoBuilder {
         deferred = new boolean[Flow.n];
         attempts = new int[Flow.n];
         destroys = new int[Flow.n];
+        tempRounds = new int[Flow.n];
+        tempQueue.clear();
+        tempPlaced.clear();
+        removeQueue.clear();
+        tempFor = -1;
+        approachFailed = false;
     }
 
     private static void resetFlight() {
@@ -167,6 +189,8 @@ final class AutoBuilder {
         running = false;
         hasSaved = false;
         resetFlight();
+        tempQueue.clear();
+        removeQueue.clear();
     }
 
     // ------------------------------------------------------------------ petla
@@ -192,6 +216,18 @@ final class AutoBuilder {
 
         int before = placedCount + destroyCount + skippedCount + approxCount + Flow.doneCount;
         moved = false;
+
+        // zadania pomocnicze: najpierw zdejmowanie starych podpor, potem stawianie nowych
+        if (!removeQueue.isEmpty() || !tempQueue.isEmpty()) {
+            boolean place = removeQueue.isEmpty();
+            BlockPos pos = place ? tempQueue.peek() : removeQueue.peek();
+            if (auxStep(p, lv, gm, pos, place)) {
+                if (place) tempPlaced.add(tempQueue.poll()); else removeQueue.poll();
+            }
+            idle = 0;
+            return;
+        }
+
         for (int k = 0; k < perTick; k++) {
             int i = next(lv);
             if (i < 0) { finish(mc); return; }
@@ -227,6 +263,11 @@ final class AutoBuilder {
     }
 
     private static void markDone(int i) {
+        if (tempFor == i && !tempPlaced.isEmpty()) {          // blok stoi - podpory juz niepotrzebne
+            removeQueue.addAll(tempPlaced);
+            tempPlaced.clear();
+            tempFor = -1;
+        }
         if (!Flow.done[i]) { Flow.done[i] = true; Flow.doneCount++; }
         if (Flow.wy[i] > Flow.maxDoneY) Flow.maxDoneY = Flow.wy[i];
     }
@@ -295,42 +336,10 @@ final class AutoBuilder {
     /** true = mozna od razu brac kolejny blok w tym ticku. */
     private static boolean stepOne(LocalPlayer p, ClientLevel lv, MultiPlayerGameMode gm, int i) {
         BlockPos pos = new BlockPos(Flow.wx[i], Flow.wy[i], Flow.wz[i]);
-        Vec3 c = Vec3.atCenterOf(pos);
-        Vec3 eye = p.getEyePosition();
-        double dist = eye.distanceTo(c);
-        double eyeH = eye.y - p.getY();
-
-        var ab = p.getAbilities();
-        if (!ab.flying) {
-            ab.flying = true;
-            p.onUpdateAbilities();
+        if (!approach(p, lv, pos, i)) {
+            if (approachFailed) { approachFailed = false; skip(i); }
+            return false;
         }
-
-        // --- lot: jesli jestesmy w zasiegu i w wolnym miejscu, stawiamy bez ruszania sie
-        boolean inReach = dist <= REACH - 0.2 && Fly.freeAt(lv, p.getX(), p.getY(), p.getZ());
-        if (flyingTo != i && !inReach) {
-            Vec3 hover = Fly.pickHover(lv, c, eyeH, REACH - 0.3);   // nad aktualna warstwa
-            if (hover == null) { skip(i); return false; }           // zewsząd zablokowane
-            List<Vec3> pth = Fly.plan(lv, p.position(), hover, topBuilt());
-            if (pth == null) {
-                if (!Fly.freeAt(lv, p.getX(), p.getY(), p.getZ())) {   // utknal w bloku
-                    Actions.unstuck(false);
-                    return false;
-                }
-                if (++replans > 3) { skip(i); replans = 0; }
-                return false;
-            }
-            path = pth;
-            pathIdx = 0;
-            flyingTo = i;
-            replans = 0;
-        }
-        if (flyingTo == i) {
-            if (!follow(p, lv, c)) return false;     // jeszcze lecimy
-            flyingTo = -1;
-        }
-        expected = null;
-        p.setDeltaMovement(Vec3.ZERO);
 
         BlockState want = Flow.ws[i];
         BlockState cur = lv.getBlockState(pos);
@@ -375,8 +384,9 @@ final class AutoBuilder {
         int strat = attempts[i];
         Plan pl = null;
         for (int k = 0; k < 3 && pl == null; k++) pl = plan(lv, pos, want, strat + k);
-        if (pl == null) {               // nie ma o co oprzec - sprobujemy pozniej
-            deferred[i] = true;
+        if (pl == null) {               // nie ma o co oprzec
+            if (prepareTemps(lv, pos, i)) return false;     // postawimy tymczasowa podpore
+            deferred[i] = true;                             // inaczej - sprobujemy pozniej
             cursor++;
             return false;
         }
@@ -416,9 +426,130 @@ final class AutoBuilder {
         Flow.skip[i] = true;
         skippedCount++;
         resetFlight();
+        if (tempFor == i) {
+            removeQueue.addAll(tempPlaced);
+            tempPlaced.clear();
+            tempQueue.clear();
+            tempFor = -1;
+        }
     }
 
     // ------------------------------------------------------------------ lot
+    /** Dolot w zasieg bloku (trasa bezkolizyjna). true = jestesmy na miejscu i mozna dzialac. */
+    private static boolean approach(LocalPlayer p, ClientLevel lv, BlockPos pos, int key) {
+        Vec3 c = Vec3.atCenterOf(pos);
+        Vec3 eye = p.getEyePosition();
+        double dist = eye.distanceTo(c);
+        double eyeH = eye.y - p.getY();
+
+        var ab = p.getAbilities();
+        if (!ab.flying) {
+            ab.flying = true;
+            p.onUpdateAbilities();
+        }
+
+        boolean inReach = dist <= REACH - 0.2 && Fly.freeAt(lv, p.getX(), p.getY(), p.getZ());
+        if (flyingTo != key && !inReach) {
+            Vec3 hover = Fly.pickHover(lv, c, eyeH, REACH - 0.3);
+            if (hover == null) { approachFailed = true; return false; }     // zewszad zablokowane
+            List<Vec3> pth = Fly.plan(lv, p.position(), hover, topBuilt());
+            if (pth == null) {
+                if (!Fly.freeAt(lv, p.getX(), p.getY(), p.getZ())) {   // utknal w bloku
+                    Actions.unstuck(false);
+                    return false;
+                }
+                if (++replans > 3) { replans = 0; approachFailed = true; }
+                return false;
+            }
+            path = pth;
+            pathIdx = 0;
+            flyingTo = key;
+            replans = 0;
+        }
+        if (flyingTo == key) {
+            if (!follow(p, lv, c)) return false;     // jeszcze lecimy
+            flyingTo = -1;
+        }
+        expected = null;
+        p.setDeltaMovement(Vec3.ZERO);
+        return true;
+    }
+
+    /** Krok zadania pomocniczego (podpora/zdjecie). true = zadanie zakonczone (lub porzucone). */
+    private static boolean auxStep(LocalPlayer p, ClientLevel lv, MultiPlayerGameMode gm, BlockPos pos, boolean place) {
+        if (!approach(p, lv, pos, AUX_KEY)) {
+            if (approachFailed) { approachFailed = false; return true; }   // nie da sie dolecic - porzucamy
+            return false;
+        }
+        BlockState cur = lv.getBlockState(pos);
+        if (place) {
+            if (!cur.canBeReplaced()) return true;
+            BlockHitResult hit = support(lv, pos, false, null, null, false);
+            if (hit == null) return true;
+            give(p, gm, Blocks.COBBLESTONE.asItem());
+            gm.useItemOn(p, InteractionHand.MAIN_HAND, hit);
+            return true;
+        }
+        if (!cur.isAir()) { gm.destroyBlock(pos); destroyCount++; }
+        return true;
+    }
+
+    private static boolean hasSolidNeighbor(ClientLevel lv, BlockPos c) {
+        for (Direction d : Direction.values()) {
+            BlockPos n = c.relative(d);
+            BlockState ns = lv.getBlockState(n);
+            if (!ns.isAir() && !ns.canBeReplaced() && ns.isCollisionShapeFullBlock(lv, n)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Blok wisi w powietrzu: szukamy najkrotszej sciezki pustych komorek (do 4) od miejsca bloku do
+     * najblizszego litego bloku i stawiamy tam tymczasowe podpory (cobblestone). Po postawieniu
+     * docelowego bloku bot je zdejmuje. true = zaplanowano podpory.
+     */
+    private static boolean prepareTemps(ClientLevel lv, BlockPos pos, int i) {
+        if (!useTemps || tempRounds[i] >= 3) return false;
+        if (Flow.ws[i].getBlock() instanceof FallingBlock) return false;   // piasek/zwir spadlby po zdjeciu podpory
+        if (hasSolidNeighbor(lv, pos)) return false;                         // podparcie jest, problemem jest inne ograniczenie
+
+        ArrayDeque<BlockPos> q = new ArrayDeque<>();
+        Map<BlockPos, BlockPos> parent = new HashMap<>();
+        Map<BlockPos, Integer> depth = new HashMap<>();
+        q.add(pos);
+        parent.put(pos, null);
+        depth.put(pos, 0);
+        BlockPos found = null;
+        search:
+        while (!q.isEmpty()) {
+            BlockPos cur = q.poll();
+            int d = depth.get(cur);
+            if (d >= 4) continue;
+            for (Direction dir : Direction.values()) {
+                BlockPos nb = cur.relative(dir);
+                if (parent.containsKey(nb)) continue;
+                BlockState ns = lv.getBlockState(nb);
+                if (!(ns.isAir() || ns.canBeReplaced())) continue;
+                if (Flow.inPlan(nb.getX(), nb.getY(), nb.getZ())) continue;     // nie zajmuj miejsc budowli
+                parent.put(nb, cur);
+                depth.put(nb, d + 1);
+                if (hasSolidNeighbor(lv, nb)) { found = nb; break search; }
+                q.add(nb);
+            }
+        }
+        if (found == null) return false;
+
+        tempRounds[i]++;
+        tempFor = i;
+        tempPlaced.clear();
+        BlockPos cur = found;
+        while (cur != null && !cur.equals(pos)) {       // od litego bloku w strone celu
+            tempQueue.add(cur);
+            cur = parent.get(cur);
+        }
+        return true;
+    }
+
     /**
      * Jeden krok lotu po trasie. Zwraca true dopiero w tyku PO dotarciu (serwer zdazy poznac pozycje).
      */

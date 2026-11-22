@@ -43,6 +43,7 @@ public final class Flow {
     static int maxDoneY = Integer.MIN_VALUE;     // najwyzszy potwierdzony blok planu
     static boolean scanWrapped;                  // czy skan przeszedl caly plan
     static int[] order = new int[0];  // kolejnosc budowy: warstwami od dolu
+    static long[] posKeys = new long[0];   // posortowane pozycje planu (dla inPlan)
     static int doneCount, scanCursor;
 
     // ustawienia podgladu
@@ -117,6 +118,7 @@ public final class Flow {
             skip = new boolean[0];
             approx = new boolean[0];
             order = new int[0];
+            posKeys = new long[0];
             return;
         }
         n = clip.length;
@@ -149,6 +151,18 @@ public final class Flow {
         Arrays.sort(keys);
         order = new int[n];
         for (int i = 0; i < n; i++) order[i] = (int) (keys[i] & 0xFFFFF);
+        posKeys = new long[n];
+        for (int i = 0; i < n; i++) posKeys[i] = pack(wx[i], wy[i], wz[i]);
+        Arrays.sort(posKeys);
+    }
+
+    private static long pack(int x, int y, int z) {
+        return (((long) x & 0x1FFFFF) << 42) | (((long) y & 0x1FFFFF) << 21) | ((long) z & 0x1FFFFF);
+    }
+
+    /** Czy dana pozycja nalezy do planu budowy. */
+    static boolean inPlan(int x, int y, int z) {
+        return n > 0 && Arrays.binarySearch(posKeys, pack(x, y, z)) >= 0;
     }
 
     static void rotate90() {

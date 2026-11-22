@@ -57,7 +57,20 @@ final class Cmds {
                                 .executes(c -> { Actions.speed(IntegerArgumentType.getInteger(c, "n")); return 1; })))
                 .then(lit("replace", Actions::replace))
                 .then(lit("menu", Ui::openMenuNextTick))
+                .then(lit("podpory", Actions::togglePodpory))
+                .then(ClientCommands.literal("krok")
+                        .then(ClientCommands.argument("n", IntegerArgumentType.integer(1, 200))
+                                .executes(c -> { Actions.step = IntegerArgumentType.getInteger(c, "n"); Msg.chat("Krok: " + Actions.step); return 1; })))
+                .then(nudge("przod")).then(nudge("tyl")).then(nudge("lewo"))
+                .then(nudge("prawo")).then(nudge("gora")).then(nudge("dol"))
                 .then(lit("unstuck", () -> Actions.unstuck(true)));
+    }
+
+    private static LiteralArgumentBuilder<FabricClientCommandSource> nudge(String rel) {
+        return ClientCommands.literal(rel)
+                .executes(c -> { Actions.nudge(rel, Actions.step); return 1; })
+                .then(ClientCommands.argument("n", IntegerArgumentType.integer(1, 200))
+                        .executes(c -> { Actions.nudge(rel, IntegerArgumentType.getInteger(c, "n")); return 1; }));
     }
 
     private static LiteralArgumentBuilder<FabricClientCommandSource> lit(String name, Runnable r) {

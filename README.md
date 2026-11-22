@@ -24,8 +24,17 @@ Klawisze zmienisz w Opcje → Sterowanie → BlockFLow.
 `speed 1-8` (bloków na tick), `replace` (czy niszczyć przeszkadzające bloki w creative),
 `unstuck` (wyciąga Cię z bloków).
 
+
+## Przesuwanie budowli (xyz) i obrót
+- **Strzałki** = przód / tył / lewo / prawo (względem kierunku, w który patrzysz), **PgUp / PgDn** = w górę / w dół. Krok: `/bf krok n` albo przycisk w menu (1/5/10).
+- Menu (prawy Shift) → ostatnia strona „przesuwanie i obrót": obrót 90°, lustro, przód/tył/lewo/prawo/góra/dół, start/pauza, warstwy.
+- Komendy: `/bf przod|tyl|lewo|prawo|gora|dol [n]`, `/bf move x y z`, `/bf rotate [deg]`, `/bf mirror`.
+
+## Brak podparcia = tymczasowa podpora
+Gdy blok wisi w powietrzu (nie ma obok niczego litego), bot stawia z **cobblestone** najkrótszą tymczasową podporę (do 4 bloków) do najbliższego litego bloku, stawia blok, a potem podporę **zdejmuje**. Nie używa pól, które należą do budowli. Piasek/żwir (spadłyby) są pomijane. Wyłączenie: `/bf podpory`.
+
 ## Menu i sloty (prawy Shift)
-- **Prawy Shift** (lub `/bf menu`) otwiera menu: **10 slotów na własne budowle** (2 strony po 5) i strona z **gotowymi schematami** (domek, wieża, piramida, mur, platforma, **zamek, statek, hotel, blok radziecki, bank, latarnia, willa, most**).
+- **Prawy Shift** (lub `/bf menu`) otwiera menu: **10 slotów na własne budowle** (2 strony po 5) i strona z **gotowymi schematami** (20 sztuk: domek wiejski, willa, **zamek**, **galeon**, hotel, blok radziecki, **trzy wieżowce** (radziecki, szklany, art deco), biurowiec, bank, kościół, wiatrak, latarnia morska, most łukowy, piramida, wieża zegarowa, stodoła, mur z basztami, kamienica).
 - **Zapisz** zapisuje aktualny schowek (najpierw zaznacz i `copy`), **Wczytaj** wrzuca slot do schowka, **Usuń** czyści slot.
 - **Postaw na celowniku** ustawia hologram tam, gdzie patrzysz; dalej `start` jak zwykle.
 - Sloty leżą w `config/blockflow/slotN.bfs` (możesz je kopiować między komputerami).

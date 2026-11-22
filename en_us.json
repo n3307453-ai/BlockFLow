@@ -7,5 +7,11 @@
   "key.blockflow.place": "Place hologram here",
   "key.blockflow.build": "Start / pause auto-build",
   "key.blockflow.clear": "Clear all",
-  "key.blockflow.menu": "Open BlockFLow menu"
+  "key.blockflow.menu": "Open BlockFLow menu",
+  "key.blockflow.nudge_fwd": "Move building forward",
+  "key.blockflow.nudge_back": "Move building back",
+  "key.blockflow.nudge_left": "Move building left",
+  "key.blockflow.nudge_right": "Move building right",
+  "key.blockflow.nudge_up": "Move building up",
+  "key.blockflow.nudge_down": "Move building down"
 }

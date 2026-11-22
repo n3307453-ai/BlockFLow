@@ -3,6 +3,7 @@ package pl.blockflow;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -76,6 +77,36 @@ final class Actions {
         if (Flow.anchor == null) { Msg.chat("Najpierw ustaw miejsce (place)."); return; }
         Flow.setAnchor(Flow.anchor.offset(dx, dy, dz));
         Msg.chat("Przesunieto: " + fmt(Flow.anchor));
+    }
+
+    /** Krok przesuwania (klawisze strzalek / menu). */
+    static int step = 1;
+
+    static void cycleStep() {
+        step = step == 1 ? 5 : step == 5 ? 10 : 1;
+    }
+
+    /** Przesuniecie budowli wzgledem kierunku, w ktory patrzysz: przod/tyl/lewo/prawo/gora/dol. */
+    static void nudge(String rel, int n) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+        if (Flow.anchor == null) { Msg.chat("Najpierw ustaw miejsce (place)."); return; }
+        Direction f = mc.player.getDirection();
+        Direction d = switch (rel) {
+            case "przod" -> f;
+            case "tyl" -> f.getOpposite();
+            case "prawo" -> f.getClockWise();
+            case "lewo" -> f.getCounterClockWise();
+            case "gora" -> Direction.UP;
+            default -> Direction.DOWN;
+        };
+        Flow.setAnchor(Flow.anchor.relative(d, n));
+        Msg.chat("Przesunieto (" + rel + " x" + n + "): " + fmt(Flow.anchor));
+    }
+
+    static void togglePodpory() {
+        AutoBuilder.useTemps = !AutoBuilder.useTemps;
+        Msg.chat("Tymczasowe podpory dla blokow w powietrzu: " + (AutoBuilder.useTemps ? "TAK" : "nie"));
     }
 
     static void clear() {

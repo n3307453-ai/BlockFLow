@@ -165,6 +165,11 @@ final class Schem {
         return p.getValue(v).map(x -> s.setValue(p, x)).orElse(s);
     }
 
+    /** Blok po id (np. "minecraft:white_concrete") albo null - odporne na zmiany nazw stalych w Blocks. */
+    static Block blockById(String id) {
+        return blocks().get(id);
+    }
+
     private static Map<String, Block> blocks() {
         if (blockById == null) {
             Map<String, Block> m = new HashMap<>();

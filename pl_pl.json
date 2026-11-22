@@ -7,5 +7,11 @@
   "key.blockflow.place": "Postaw hologram tutaj",
   "key.blockflow.build": "Start / pauza auto-budowy",
   "key.blockflow.clear": "Wyczyść wszystko",
-  "key.blockflow.menu": "Menu BlockFLow"
+  "key.blockflow.menu": "Menu BlockFLow",
+  "key.blockflow.nudge_fwd": "Budowla: przod",
+  "key.blockflow.nudge_back": "Budowla: tyl",
+  "key.blockflow.nudge_left": "Budowla: w lewo",
+  "key.blockflow.nudge_right": "Budowla: w prawo",
+  "key.blockflow.nudge_up": "Budowla: w gore",
+  "key.blockflow.nudge_down": "Budowla: w dol"
 }
