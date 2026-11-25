@@ -106,7 +106,7 @@ final class Actions {
 
     static void togglePodpory() {
         AutoBuilder.useTemps = !AutoBuilder.useTemps;
-        Msg.chat("Tymczasowe podpory dla blokow w powietrzu: " + (AutoBuilder.useTemps ? "TAK" : "nie"));
+        Msg.chat("Podpory z rusztowania dla blokow w powietrzu: " + (AutoBuilder.useTemps ? "TAK" : "nie"));
     }
 
     static void clear() {

@@ -30,11 +30,18 @@ Klawisze zmienisz w Opcje → Sterowanie → BlockFLow.
 - Menu (prawy Shift) → ostatnia strona „przesuwanie i obrót": obrót 90°, lustro, przód/tył/lewo/prawo/góra/dół, start/pauza, warstwy.
 - Komendy: `/bf przod|tyl|lewo|prawo|gora|dol [n]`, `/bf move x y z`, `/bf rotate [deg]`, `/bf mirror`.
 
-## Brak podparcia = tymczasowa podpora
-Gdy blok wisi w powietrzu (nie ma obok niczego litego), bot stawia z **cobblestone** najkrótszą tymczasową podporę (do 4 bloków) do najbliższego litego bloku, stawia blok, a potem podporę **zdejmuje**. Nie używa pól, które należą do budowli. Piasek/żwir (spadłyby) są pomijane. Wyłączenie: `/bf podpory`.
+## Brak podparcia = podpora z rusztowania
+Gdy blok wisi w powietrzu, bot buduje z **rusztowania** (scaffolding) kolumnę od ziemi pod blokiem albo obok niego (wybiera najkrótszą, do 48 bloków), stawia blok, a potem zdejmuje rusztowanie od góry. Nie zajmuje pól należących do budowli. Piasek/żwir (spadłyby) są pomijane. Wyłączenie: `/bf podpory`.
+
+## Stawianie 1:1 (każdy rodzaj bloku)
+Bot sprawdza nie tylko rodzaj bloku, ale i jego stan, i do trzech razy próbuje innego sposobu (obrót gracza, klikana ściana, miejsce kliknięcia), a w razie błędu burzy blok i stawia od nowa:
+- **Drzwi** (obie połówki, zawias, kierunek, otwarcie), **łóżka** (obie części), wysokie rośliny, **płyty** (też podwójne), **schody**, belki/kolumny (oś), bloki z kierunkiem (piece, skrzynie, dozowniki, tłoki, obserwatory…).
+- **Przyciski, dźwignie, szlifierki** (podłoga/ściana/sufit), pochodnie i drabiny ścienne, tabliczki i sztandary (obrót), **świece** (stosy 1–4), warstwy śniegu.
+- Stany przełączane kliknięciem (otwarte drzwi/furtki, dźwignia, opóźnienie przekaźnika, tryb komparatora) bot ustawia **kliknięciem pustą ręką**.
+- Czego **nie da się** skopiować/postawić klientem: woda i lawa, ogień, portale, byty (obrazy, ramki, pojazdy, armor standy), zawartość skrzyń i pieców, tekst tabliczek, wzory sztandarów, typ spawnera. Takie bloki są pomijane lub stawiane „puste", a podsumowanie to pokazuje.
 
 ## Menu i sloty (prawy Shift)
-- **Prawy Shift** (lub `/bf menu`) otwiera menu: **10 slotów na własne budowle** (2 strony po 5) i strona z **gotowymi schematami** (20 sztuk: domek wiejski, willa, **zamek**, **galeon**, hotel, blok radziecki, **trzy wieżowce** (radziecki, szklany, art deco), biurowiec, bank, kościół, wiatrak, latarnia morska, most łukowy, piramida, wieża zegarowa, stodoła, mur z basztami, kamienica).
+- **Prawy Shift** (lub `/bf menu`) otwiera menu: **10 slotów na własne budowle** (2 strony po 5) i strona z **gotowymi schematami** (20 sztuk, **z wyposażeniem**: drzwi, łóżka, szafy, piece, klatki schodowe, dźwignie z lampami, pułapka w piramidzie…: domek wiejski, willa, **zamek**, **galeon**, hotel, blok radziecki, **trzy wieżowce** (radziecki, szklany, art deco), biurowiec, bank, kościół, wiatrak, latarnia morska, most łukowy, piramida, wieża zegarowa, stodoła, mur z basztami, kamienica).
 - **Zapisz** zapisuje aktualny schowek (najpierw zaznacz i `copy`), **Wczytaj** wrzuca slot do schowka, **Usuń** czyści slot.
 - **Postaw na celowniku** ustawia hologram tam, gdzie patrzysz; dalej `start` jak zwykle.
 - Sloty leżą w `config/blockflow/slotN.bfs` (możesz je kopiować między komputerami).

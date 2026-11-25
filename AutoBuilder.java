@@ -12,32 +12,26 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.FallingBlock;
 import net.minecraft.world.level.block.ScaffoldingBlock;
-import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.Half;
-import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Auto-budowa (TYLKO creative), czysto po stronie klienta.
  *
- * Budowa WARSTWAMI: od podlogi w gore, cala warstwa przed nastepna. Bot leci nad biezaca warstwa
- * (trasa po wolnych miejscach - Fly), wiec nie wchodzi w postawione bloki i serwer niczego nie cofa.
- *
- * Bezpieczniki: wlasny ruch gracza (WASD/spacja/shift) wstrzymuje bota; bot, ktory nic nie robi,
- * pomija blok; po pauzie/koncu gracz jest wyciagany z blokow.
+ * - Budowa WARSTWAMI od podlogi w gore; lot bezkolizyjny nad biezaca warstwa (Fly).
+ * - Stawianie 1:1: dla kazdego bloku do 3 sposobow (obrot gracza, klikana sciana, os, miejsce klikniecia),
+ *   weryfikacja stanu, burzenie i ponowna proba; zawias drzwi, lozka, przyciski/dzwignie, drabiny, tablice,
+ *   stosy (swiece), podwojne plyty; otwarcie drzwi/dzwignia/przekaznik poprawiane kliknieciem.
+ * - Blok wiszacy w powietrzu: tymczasowa podpora z RUSZTOWANIA (kolumna od ziemi), potem zdejmowana.
  */
 final class AutoBuilder {
     private AutoBuilder() {}
@@ -51,6 +45,7 @@ final class AutoBuilder {
     static boolean[] deferred = new boolean[0];
     static int[] attempts = new int[0];
     static int[] destroys = new int[0];
+    static int[] clicks = new int[0];
     static int placedCount, skippedCount, approxCount, destroyCount;
     static int targetIdx = -1;
     static int maxPlacedY = Integer.MIN_VALUE;
@@ -58,7 +53,7 @@ final class AutoBuilder {
     static double speed = 0.45;          // blokow/tick podczas lotu
     static int perTick = 1;              // ile blokow na tick
     static boolean replace = false;      // czy niszczyc przeszkadzajace (obce) bloki
-    static boolean useTemps = true;      // tymczasowe podpory dla blokow wiszacych w powietrzu
+    static boolean useTemps = true;      // podpory z rusztowania dla blokow wiszacych w powietrzu
 
     private static int flyingTo = -1;
     private static List<Vec3> path;
@@ -69,18 +64,18 @@ final class AutoBuilder {
     private static boolean moved;
     private static boolean approachFailed;
 
-    // tymczasowe podpory (stawiane, a po postawieniu docelowego bloku zdejmowane)
+    // budowa warstwami od podlogi w gore
+    private static int layerY = Integer.MIN_VALUE;
+    private static int layerStart;
+    private static boolean layerProgress;
+
+    // tymczasowe podpory (rusztowanie): stawiane od dolu, zdejmowane od gory
     private static final int AUX_KEY = Integer.MIN_VALUE + 7;
     private static final ArrayDeque<BlockPos> tempQueue = new ArrayDeque<>();
     private static final ArrayList<BlockPos> tempPlaced = new ArrayList<>();
     private static final ArrayDeque<BlockPos> removeQueue = new ArrayDeque<>();
     private static int tempFor = -1;
     private static int[] tempRounds = new int[0];
-
-    // budowa warstwami od podlogi w gore
-    private static int layerY = Integer.MIN_VALUE;
-    private static int layerStart;
-    private static boolean layerProgress;
 
     private static ItemStack saved = ItemStack.EMPTY;
     private static int savedSel = -1;
@@ -109,6 +104,7 @@ final class AutoBuilder {
         deferred = new boolean[Flow.n];
         attempts = new int[Flow.n];
         destroys = new int[Flow.n];
+        clicks = new int[Flow.n];
         tempRounds = new int[Flow.n];
         tempQueue.clear();
         tempPlaced.clear();
@@ -257,17 +253,20 @@ final class AutoBuilder {
         targetIdx = -1;
         afterStop();
         String extra = "";
-        if (skippedCount > 0) extra += " (pominieto " + skippedCount + " - przeszkoda/brak podparcia)";
+        if (skippedCount > 0) extra += " (pominieto " + skippedCount + " - przeszkoda/brak podparcia/brak przedmiotu)";
         if (approxCount > 0) extra += " (" + approxCount + " z przyblizonym stanem)";
         Msg.chat("Gotowe! " + Flow.doneCount + "/" + Flow.n + extra);
     }
 
+    private static void releaseTemps() {
+        for (int k = tempPlaced.size() - 1; k >= 0; k--) removeQueue.add(tempPlaced.get(k));   // od gory
+        tempPlaced.clear();
+        tempQueue.clear();
+        tempFor = -1;
+    }
+
     private static void markDone(int i) {
-        if (tempFor == i && !tempPlaced.isEmpty()) {          // blok stoi - podpory juz niepotrzebne
-            removeQueue.addAll(tempPlaced);
-            tempPlaced.clear();
-            tempFor = -1;
-        }
+        if (tempFor == i) releaseTemps();                      // blok stoi - podpory juz niepotrzebne
         if (!Flow.done[i]) { Flow.done[i] = true; Flow.doneCount++; }
         if (Flow.wy[i] > Flow.maxDoneY) Flow.maxDoneY = Flow.wy[i];
     }
@@ -281,11 +280,7 @@ final class AutoBuilder {
         return false;
     }
 
-    /**
-     * Nastepny indeks planu do postawienia albo -1.
-     * Budowa WARSTWAMI: cala warstwa (jeden poziom Y) jest konczona, zanim bot wzniesie sie wyzej.
-     * Bloki bez podparcia w warstwie sa ponawiane po reszcie tej samej warstwy.
-     */
+    /** Nastepny indeks planu do postawienia albo -1 (budowa warstwami). */
     private static int next(ClientLevel lv) {
         int n = Flow.n;
         BlockPos.MutableBlockPos mp = new BlockPos.MutableBlockPos();
@@ -293,7 +288,6 @@ final class AutoBuilder {
             while (cursor < n) {
                 int i = Flow.order[cursor];
                 if (Flow.wy[i] != layerY) {
-                    // koniec warstwy: jesli cos czeka na podparcie, a w warstwie cos postawilismy - ponow
                     if (layerProgress && layerHasDeferred(cursor)) {
                         for (int k = layerStart; k < cursor; k++) deferred[Flow.order[k]] = false;
                         cursor = layerStart;
@@ -313,7 +307,6 @@ final class AutoBuilder {
                 }
                 return i;
             }
-            // koniec planu: ostatnia warstwa
             if (layerProgress && layerHasDeferred(n)) {
                 for (int k = layerStart; k < n; k++) deferred[Flow.order[k]] = false;
                 cursor = layerStart;
@@ -322,7 +315,7 @@ final class AutoBuilder {
             }
             boolean anyDeferred = false;
             for (boolean b : deferred) if (b) { anyDeferred = true; break; }
-            if (anyDeferred && progressed) {          // przebieg koncowy dla reszty
+            if (anyDeferred && progressed) {
                 Arrays.fill(deferred, false);
                 cursor = 0;
                 layerY = Integer.MIN_VALUE;
@@ -331,6 +324,12 @@ final class AutoBuilder {
             }
             return -1;
         }
+    }
+
+    private static String stackProp(BlockState s) {
+        for (String n : new String[]{"candles", "pickles", "layers", "eggs", "flower_amount", "segment_amount"})
+            if (Props.has(s, n)) return n;
+        return null;
     }
 
     /** true = mozna od razu brac kolejny blok w tym ticku. */
@@ -347,23 +346,38 @@ final class AutoBuilder {
         if (Match.same(cur, want)) { markDone(i); return true; }
 
         Item item = want.getBlock().asItem();
-        if (item == Items.AIR) { skip(i); return false; }
+        if (item == Items.AIR) { skip(i); return false; }      // np. woda, lawa, ogien - brak przedmiotu
 
-        // --- podwojna plyta: klikamy plyte, ktora juz stoi
-        if (want.hasProperty(BlockStateProperties.SLAB_TYPE)
-                && want.getValue(BlockStateProperties.SLAB_TYPE) == SlabType.DOUBLE
-                && cur.getBlock() == want.getBlock()
-                && cur.hasProperty(BlockStateProperties.SLAB_TYPE)
-                && cur.getValue(BlockStateProperties.SLAB_TYPE) != SlabType.DOUBLE) {
-            boolean bottom = cur.getValue(BlockStateProperties.SLAB_TYPE) == SlabType.BOTTOM;
+        // druga polowka drzwi / lozka / wysokiej rosliny powstaje razem z pierwsza
+        if ("upper".equals(Props.get(want, "half")) || "head".equals(Props.get(want, "part"))) {
+            deferred[i] = true;
+            cursor++;
+            return false;
+        }
+
+        // podwojna plyta: klikamy plyte, ktora juz stoi
+        if ("double".equals(Props.get(want, "type")) && cur.getBlock() == want.getBlock()
+                && Props.has(cur, "type") && !"double".equals(Props.get(cur, "type"))) {
+            boolean bottom = !"top".equals(Props.get(cur, "type"));
             Vec3 hv = new Vec3(pos.getX() + 0.5, pos.getY() + (bottom ? 1.0 : 0.0), pos.getZ() + 0.5);
-            BlockHitResult hit = new BlockHitResult(hv, bottom ? Direction.UP : Direction.DOWN, pos, false);
-            use(p, gm, item, hit, i, pos);
+            use(p, gm, item, new BlockHitResult(hv, bottom ? Direction.UP : Direction.DOWN, pos, false), i, pos);
             return true;
         }
 
-        // --- ten sam blok, ale zly stan: burzymy i probujemy innego sposobu
+        // stosy: swiece, sniegi, jaja, ogorki morskie - klikamy blok tym samym przedmiotem
+        String sp = stackProp(want);
+        if (sp != null && cur.getBlock() == want.getBlock()) {
+            int have = Props.num(Props.get(cur, sp)), need = Props.num(Props.get(want, sp));
+            if (have > 0 && have < need) {
+                Vec3 hv = new Vec3(pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5);
+                use(p, gm, item, new BlockHitResult(hv, Direction.UP, pos, false), i, pos);
+                return true;
+            }
+        }
+
+        // ten sam blok, zly stan
         if (cur.getBlock() == want.getBlock()) {
+            if (Match.sameExceptClickable(cur, want)) return clickFix(p, gm, pos, i);   // otwarcie/dzwignia/przekaznik
             if (attempts[i] >= 3) {         // trzy sposoby wyprobowane - akceptujemy przyblizenie
                 Flow.approx[i] = true;
                 Flow.skip[i] = true;
@@ -374,24 +388,24 @@ final class AutoBuilder {
             return destroy(gm, pos, i);
         }
 
-        // --- obcy blok na miejscu
+        // obcy blok na miejscu
         if (!cur.canBeReplaced()) {
             if (!replace) { skip(i); return false; }
             return destroy(gm, pos, i);
         }
 
-        // --- wybor sposobu stawiania (3 strategie)
+        // wybor sposobu stawiania (3 strategie)
         int strat = attempts[i];
         Plan pl = null;
         for (int k = 0; k < 3 && pl == null; k++) pl = plan(lv, pos, want, strat + k);
         if (pl == null) {               // nie ma o co oprzec
-            if (prepareTemps(lv, pos, i)) return false;     // postawimy tymczasowa podpore
+            if (prepareTemps(lv, pos, i)) return false;     // postawimy podpore z rusztowania
             deferred[i] = true;                             // inaczej - sprobujemy pozniej
             cursor++;
             return false;
         }
 
-        // --- obrot gracza: czekamy tick, zeby serwer dostal nowy obrot
+        // obrot gracza: czekamy tick, zeby serwer dostal nowy obrot
         boolean needYaw = pl.yaw() != null && Math.abs(Mth.wrapDegrees(p.getYRot() - pl.yaw())) > 2f;
         boolean needPitch = pl.pitch() != null && Math.abs(p.getXRot() - pl.pitch()) > 2f;
         if (needYaw || needPitch) {
@@ -401,6 +415,24 @@ final class AutoBuilder {
         }
 
         use(p, gm, item, pl.hit(), i, pos);
+        return true;
+    }
+
+    /** Poprawia otwarcie drzwi/furtek, dzwignie, przekaznik, komparator pustą ręką (klikniecie). */
+    private static boolean clickFix(LocalPlayer p, MultiPlayerGameMode gm, BlockPos pos, int i) {
+        if (++clicks[i] > 6) {
+            Flow.approx[i] = true;
+            Flow.skip[i] = true;
+            approxCount++;
+            markDone(i);
+            return false;
+        }
+        Inventory inv = p.getInventory();
+        inv.setItem(HOT, ItemStack.EMPTY);
+        gm.handleCreativeModeItemAdd(ItemStack.EMPTY, 36 + HOT);
+        if (inv.getSelectedSlot() != HOT) inv.setSelectedSlot(HOT);
+        gm.useItemOn(p, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
+        progressed = true;
         return true;
     }
 
@@ -419,6 +451,7 @@ final class AutoBuilder {
         layerProgress = true;
         placedCount++;
         if (pos.getY() > maxPlacedY) maxPlacedY = pos.getY();
+        if (Props.id(Flow.ws[i]).contains("sign")) Ui.closeScreenSoon();     // okno edycji tekstu tabliczki
         if (++attempts[i] > 6) skip(i);
     }
 
@@ -426,15 +459,15 @@ final class AutoBuilder {
         Flow.skip[i] = true;
         skippedCount++;
         resetFlight();
-        if (tempFor == i) {
-            removeQueue.addAll(tempPlaced);
-            tempPlaced.clear();
-            tempQueue.clear();
-            tempFor = -1;
-        }
+        if (tempFor == i) releaseTemps();
     }
 
     // ------------------------------------------------------------------ lot
+    private static Item scaffoldItem() {
+        Block b = Schem.blockById("minecraft:scaffolding");
+        return b == null ? Items.AIR : b.asItem();
+    }
+
     /** Dolot w zasieg bloku (trasa bezkolizyjna). true = jestesmy na miejscu i mozna dzialac. */
     private static boolean approach(LocalPlayer p, ClientLevel lv, BlockPos pos, int key) {
         Vec3 c = Vec3.atCenterOf(pos);
@@ -475,7 +508,7 @@ final class AutoBuilder {
         return true;
     }
 
-    /** Krok zadania pomocniczego (podpora/zdjecie). true = zadanie zakonczone (lub porzucone). */
+    /** Krok zadania pomocniczego (rusztowanie/zdjecie). true = zadanie zakonczone (lub porzucone). */
     private static boolean auxStep(LocalPlayer p, ClientLevel lv, MultiPlayerGameMode gm, BlockPos pos, boolean place) {
         if (!approach(p, lv, pos, AUX_KEY)) {
             if (approachFailed) { approachFailed = false; return true; }   // nie da sie dolecic - porzucamy
@@ -484,9 +517,18 @@ final class AutoBuilder {
         BlockState cur = lv.getBlockState(pos);
         if (place) {
             if (!cur.canBeReplaced()) return true;
-            BlockHitResult hit = support(lv, pos, false, null, null, false);
+            Item sc = scaffoldItem();
+            if (sc == Items.AIR) return true;
+            BlockPos below = pos.below();
+            BlockHitResult hit;
+            if (lv.getBlockState(below).getBlock() instanceof ScaffoldingBlock) {
+                // klik w BOK rusztowania pod spodem = rosnie w gore (gorna sciana = w bok!)
+                hit = new BlockHitResult(new Vec3(below.getX() + 0.5, below.getY() + 0.5, below.getZ()), Direction.NORTH, below, false);
+            } else {
+                hit = support(lv, pos, false, null, null, true, 0.5, 0.5);
+            }
             if (hit == null) return true;
-            give(p, gm, Blocks.COBBLESTONE.asItem());
+            give(p, gm, sc);
             gm.useItemOn(p, InteractionHand.MAIN_HAND, hit);
             return true;
         }
@@ -503,55 +545,54 @@ final class AutoBuilder {
         return false;
     }
 
+    /** Kolumna pustych komorek od 'end' w dol do litego gruntu (nie zajmuje pol budowli) albo null. */
+    private static List<BlockPos> column(ClientLevel lv, BlockPos end) {
+        List<BlockPos> col = new ArrayList<>();
+        BlockPos c = end;
+        for (int k = 0; k < 48; k++) {
+            BlockState s = lv.getBlockState(c);
+            if (!(s.isAir() || s.canBeReplaced())) return null;
+            if (Flow.inPlan(c.getX(), c.getY(), c.getZ())) return null;
+            col.add(c);
+            BlockPos below = c.below();
+            BlockState bs = lv.getBlockState(below);
+            if (!bs.isAir() && !bs.canBeReplaced()) return bs.isCollisionShapeFullBlock(lv, below) ? col : null;
+            c = below;
+        }
+        return null;
+    }
+
     /**
-     * Blok wisi w powietrzu: szukamy najkrotszej sciezki pustych komorek (do 4) od miejsca bloku do
-     * najblizszego litego bloku i stawiamy tam tymczasowe podpory (cobblestone). Po postawieniu
-     * docelowego bloku bot je zdejmuje. true = zaplanowano podpory.
+     * Blok wisi w powietrzu: budujemy kolumne RUSZTOWANIA od ziemi pod nim lub obok niego (wybieramy
+     * najkrotsza), stawiamy blok, a potem rusztowanie zdejmujemy (od gory). true = zaplanowano.
      */
     private static boolean prepareTemps(ClientLevel lv, BlockPos pos, int i) {
         if (!useTemps || tempRounds[i] >= 3) return false;
         if (Flow.ws[i].getBlock() instanceof FallingBlock) return false;   // piasek/zwir spadlby po zdjeciu podpory
-        if (hasSolidNeighbor(lv, pos)) return false;                         // podparcie jest, problemem jest inne ograniczenie
+        if (hasSolidNeighbor(lv, pos)) return false;                         // podparcie jest, problemem jest co innego
+        if (scaffoldItem() == Items.AIR) return false;
 
-        ArrayDeque<BlockPos> q = new ArrayDeque<>();
-        Map<BlockPos, BlockPos> parent = new HashMap<>();
-        Map<BlockPos, Integer> depth = new HashMap<>();
-        q.add(pos);
-        parent.put(pos, null);
-        depth.put(pos, 0);
-        BlockPos found = null;
-        search:
-        while (!q.isEmpty()) {
-            BlockPos cur = q.poll();
-            int d = depth.get(cur);
-            if (d >= 4) continue;
-            for (Direction dir : Direction.values()) {
-                BlockPos nb = cur.relative(dir);
-                if (parent.containsKey(nb)) continue;
-                BlockState ns = lv.getBlockState(nb);
-                if (!(ns.isAir() || ns.canBeReplaced())) continue;
-                if (Flow.inPlan(nb.getX(), nb.getY(), nb.getZ())) continue;     // nie zajmuj miejsc budowli
-                parent.put(nb, cur);
-                depth.put(nb, d + 1);
-                if (hasSolidNeighbor(lv, nb)) { found = nb; break search; }
-                q.add(nb);
-            }
+        List<BlockPos> ends = new ArrayList<>();
+        ends.add(pos.below());
+        for (Direction d : new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST}) ends.add(pos.relative(d));
+        ends.add(pos.above());
+        List<BlockPos> best = null;
+        for (BlockPos e : ends) {
+            List<BlockPos> col = column(lv, e);
+            if (col != null && (best == null || col.size() < best.size())) best = col;
         }
-        if (found == null) return false;
+        if (best == null) return false;
 
         tempRounds[i]++;
         tempFor = i;
         tempPlaced.clear();
-        BlockPos cur = found;
-        while (cur != null && !cur.equals(pos)) {       // od litego bloku w strone celu
-            tempQueue.add(cur);
-            cur = parent.get(cur);
-        }
+        tempQueue.clear();
+        for (int k = best.size() - 1; k >= 0; k--) tempQueue.add(best.get(k));   // od dolu do gory
         return true;
     }
 
     /**
-     * Jeden krok lotu po trasie. Zwraca true dopiero w tyku PO dotarciu (serwer zdazy poznac pozycje).
+     * Jeden krok lotu po trasie. Zwraca true dopiero w ticku PO dotarciu (serwer zdazy poznac pozycje).
      */
     private static boolean follow(LocalPlayer p, ClientLevel lv, Vec3 target) {
         if (path != null && pathIdx >= path.size()) {   // dotarlismy w poprzednim ticku
@@ -617,17 +658,46 @@ final class AutoBuilder {
         p.setXRot((float) (-Math.toDegrees(Math.atan2(d.y, h))));
     }
 
+    private static Direction dirOf(String s) {
+        if (s == null) return null;
+        return switch (s) {
+            case "north" -> Direction.NORTH;
+            case "south" -> Direction.SOUTH;
+            case "east" -> Direction.EAST;
+            case "west" -> Direction.WEST;
+            case "up" -> Direction.UP;
+            case "down" -> Direction.DOWN;
+            default -> null;
+        };
+    }
+
     private static boolean isTop(BlockState s) {
-        if (s.hasProperty(BlockStateProperties.SLAB_TYPE)) return s.getValue(BlockStateProperties.SLAB_TYPE) == SlabType.TOP;
-        if (s.hasProperty(BlockStateProperties.HALF)) return s.getValue(BlockStateProperties.HALF) == Half.TOP;
-        return false;
+        return "top".equals(Props.get(s, "type")) || "top".equals(Props.get(s, "half"));
+    }
+
+    /** Bloki, ktorych kierunek = kierunek patrzenia gracza (schody, furtki, drzwi, lozka), a nie przeciwny. */
+    private static boolean lookSame(String id) {
+        return id.endsWith("_stairs") || id.endsWith("fence_gate") || id.endsWith("_door") || id.endsWith("_bed");
+    }
+
+    /** Bloki przyklejane do sciany (kierunek = klikana sciana): pochodnie scienne, drabina, tabliczki scienne... */
+    private static boolean wallAttached(String id) {
+        return id.contains("wall_") || id.equals("ladder") || id.equals("cocoa");
+    }
+
+    /** Czy przy kliknieciu w pozycji (dx,dz) w bloku drzwi dostana zawias LEWY (wg zasad vanilli). */
+    private static boolean hingeLeft(Direction f, double dx, double dz) {
+        int j = f.getStepX(), k = f.getStepZ();
+        return (j >= 0 || !(dz < 0.5)) && (j <= 0 || !(dz > 0.5)) && (k >= 0 || !(dx > 0.5)) && (k <= 0 || !(dx < 0.5));
     }
 
     /**
-     * Sposob stawiania nr {@code strat} dla danego stanu:
-     *  - kierunek poziomy: 0/1 = obrot gracza (w te lub druga strone), 2 = klikniecie sciany o tym kierunku
-     *  - kierunek 6-stronny: 0/1 = patrzenie (przeciwnie/zgodnie), 2 = klikniecie sciany
-     *  - os (belki, kolumny): parzysty = podparcie wzdluz osi, nieparzysty = dowolne
+     * Sposob stawiania nr {@code strat}:
+     *  - drzwi: obrot gracza + miejsce klikniecia decyduje o zawiasie (parzysty = zadany, nieparzysty = odwrotny)
+     *  - przyciski/dzwignie ("face"): podloga/sufit/sciana przez pochylenie i kierunek patrzenia
+     *  - kierunek: 0/1 = obrot gracza (w te lub druga strone), 2 = klikniecie sciany (dla "przyklejanych" kolejnosc 2,0,1)
+     *  - os belek/kolumn: parzysty = podparcie wzdluz osi
+     *  - tabliczki/sztandary ("rotation"): obrot gracza = obrot bloku
      */
     private static Plan plan(ClientLevel lv, BlockPos pos, BlockState want, int strat) {
         // Rusztowanie: klikniecie BOKU rusztowania pod spodem = rosnie w gore (gorna sciana = w bok!)
@@ -637,44 +707,56 @@ final class AutoBuilder {
                 Vec3 hv = new Vec3(below.getX() + 0.5, below.getY() + 0.5, below.getZ());   // sciana polnocna
                 return new Plan(null, null, new BlockHitResult(hv, Direction.NORTH, below, false));
             }
-            BlockHitResult h = support(lv, pos, false, null, null, true);
+            BlockHitResult h = support(lv, pos, false, null, null, true, 0.5, 0.5);
             return h == null ? null : new Plan(null, null, h);
         }
 
+        String id = Props.id(want);
         boolean top = isTop(want);
-        Direction hf = want.hasProperty(BlockStateProperties.HORIZONTAL_FACING)
-                ? want.getValue(BlockStateProperties.HORIZONTAL_FACING) : null;
-        Direction f6 = want.hasProperty(BlockStateProperties.FACING)
-                ? want.getValue(BlockStateProperties.FACING) : null;
-        Direction.Axis axis = want.hasProperty(BlockStateProperties.AXIS)
-                ? want.getValue(BlockStateProperties.AXIS) : null;
+        Direction fd = dirOf(Props.get(want, "facing"));
+        String axisS = Props.get(want, "axis");
+        String face = Props.get(want, "face");          // floor / wall / ceiling (przyciski, dzwignie, szlifierka)
+        String rot = Props.get(want, "rotation");       // 0..15 (tabliczki stojace, sztandary, glowy)
 
         Direction forced = null;
         Direction.Axis ax = null;
         Float yaw = null, pitch = null;
+        double fx = 0.5, fz = 0.5;
 
-        if (hf != null) {
-            boolean stair = want.getBlock() instanceof StairBlock;     // schody patrza "zgodnie", reszta "przeciwnie"
-            switch (Math.floorMod(strat, 3)) {
-                case 0 -> yaw = (stair ? hf : hf.getOpposite()).toYRot();
-                case 1 -> yaw = (stair ? hf.getOpposite() : hf).toYRot();
-                default -> forced = hf;
+        if (face != null && fd != null && fd.getAxis().isHorizontal()) {
+            switch (face) {
+                case "floor" -> { pitch = 90f; yaw = fd.toYRot(); forced = Direction.UP; }
+                case "ceiling" -> { pitch = -90f; yaw = fd.toYRot(); forced = Direction.DOWN; }
+                default -> { pitch = 0f; yaw = fd.getOpposite().toYRot(); forced = fd; }
             }
-        } else if (f6 != null) {
-            int m = Math.floorMod(strat, 3);
+        } else if (Props.has(want, "hinge") && fd != null && fd.getAxis().isHorizontal()) {          // drzwi
+            yaw = fd.toYRot();
+            boolean wantLeft = "left".equals(Props.get(want, "hinge"));
+            if (Math.floorMod(strat, 2) == 1) wantLeft = !wantLeft;
+            outer:
+            for (double a : new double[]{0.25, 0.75})
+                for (double b : new double[]{0.25, 0.75})
+                    if (hingeLeft(fd, a, b) == wantLeft) { fx = a; fz = b; break outer; }
+        } else if (fd != null) {
+            boolean same = lookSame(id);
+            int m = Math.floorMod(strat + (wallAttached(id) ? 2 : 0), 3);
             if (m == 2) {
-                forced = f6;
+                forced = fd;
             } else {
-                Direction look = (m == 0) ? f6.getOpposite() : f6;
+                Direction look = (m == 0) == same ? fd : fd.getOpposite();
                 if (look == Direction.UP) pitch = -90f;
                 else if (look == Direction.DOWN) pitch = 90f;
                 else { yaw = look.toYRot(); pitch = 0f; }
             }
-        } else if (axis != null) {
-            if (Math.floorMod(strat, 2) == 0) ax = axis;
+        } else if (rot != null) {
+            yaw = Mth.wrapDegrees(Props.num(rot) * 22.5f - 180f);
+        } else if (axisS != null) {
+            if (Math.floorMod(strat, 2) == 0) {
+                ax = switch (axisS) { case "x" -> Direction.Axis.X; case "y" -> Direction.Axis.Y; default -> Direction.Axis.Z; };
+            }
         }
 
-        BlockHitResult hit = support(lv, pos, top, forced, ax, false);
+        BlockHitResult hit = support(lv, pos, top, forced, ax, false, fx, fz);
         return hit == null ? null : new Plan(yaw, pitch, hit);
     }
 
@@ -683,9 +765,10 @@ final class AutoBuilder {
      * @param forcedFace jesli != null: klikana sciana musi byc ta
      * @param axis       jesli != null: sasiad musi lezec na tej osi
      * @param avoidScaffold pomija rusztowania jako podparcie
+     * @param fx,fz      miejsce klikniecia w bloku (0..1) - wazne np. dla zawiasu drzwi
      */
-    private static BlockHitResult support(ClientLevel lv, BlockPos pos, boolean top,
-                                          Direction forcedFace, Direction.Axis axis, boolean avoidScaffold) {
+    private static BlockHitResult support(ClientLevel lv, BlockPos pos, boolean top, Direction forcedFace,
+                                          Direction.Axis axis, boolean avoidScaffold, double fx, double fz) {
         Direction[] order = top
                 ? new Direction[]{Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP, Direction.DOWN}
                 : new Direction[]{Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP};
@@ -698,10 +781,9 @@ final class AutoBuilder {
             BlockState ns = lv.getBlockState(nb);
             if (ns.isAir() || ns.canBeReplaced()) continue;
             if (avoidScaffold && ns.getBlock() instanceof ScaffoldingBlock) continue;
-            double hx = nb.getX() + 0.5 + face.getStepX() * 0.5;
-            double hy = nb.getY() + 0.5 + face.getStepY() * 0.5;
-            double hz = nb.getZ() + 0.5 + face.getStepZ() * 0.5;
-            if (face.getAxis().isHorizontal()) hy = nb.getY() + (top ? 0.75 : 0.25);
+            double hx = nb.getX() + (face.getStepX() != 0 ? 0.5 + face.getStepX() * 0.5 : fx);
+            double hz = nb.getZ() + (face.getStepZ() != 0 ? 0.5 + face.getStepZ() * 0.5 : fz);
+            double hy = face.getStepY() != 0 ? nb.getY() + 0.5 + face.getStepY() * 0.5 : nb.getY() + (top ? 0.75 : 0.25);
             BlockHitResult h = new BlockHitResult(new Vec3(hx, hy, hz), face, nb, false);
             if (ns.isCollisionShapeFullBlock(lv, nb)) return h;   // preferuj pelne bloki
             if (weak == null) weak = h;

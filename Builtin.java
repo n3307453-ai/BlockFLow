@@ -243,6 +243,7 @@ final class Builtin {
             b.set(0, 1, i, fence); b.set(12, 1, i, fence);
         }
         b.set(3, 1, 1, blk("poppy")); b.set(9, 1, 1, blk("dandelion")); b.set(1, 1, 8, blk("poppy"));
+        furnishDomek(b);
         return b;
     }
 
@@ -278,6 +279,7 @@ final class Builtin {
         b.fill(8, 2, 1, 10, 2, 1, dark);                                     // wiatka
         b.fill(7, 1, 0, 11, 1, 0, blk("stone_brick_slab"));
         for (int i = 0; i < 6; i++) b.set(1 + i * 3 % 14, 1, 16, blk("oak_leaves"));
+        furnishWilla(b);
         return b;
     }
 
@@ -389,6 +391,7 @@ final class Builtin {
         for (int[] p : new int[][]{{10, 12}, {12, 12}, {10, 14}, {12, 14}}) { b.fill(p[0], 2, p[1], p[0], 4, p[1], blk("oak_fence")); }
         b.fill(10, 5, 12, 12, 5, 14, blk("oak_planks"));
         b.set(11, 0, 13, blk("cobblestone"));
+        furnishZamek(b);
         return b;
     }
 
@@ -477,6 +480,7 @@ final class Builtin {
         // bukszpryt i galion
         b.set(cx, 7, 3, axis("oak_log", Direction.Axis.Z)); b.set(cx, 8, 2, axis("oak_log", Direction.Axis.Z));
         b.set(cx, 9, 0, blk("gold_block")); b.set(cx, 10, 0, blk("gold_block"));
+        furnishStatek(b);
         return b;
     }
 
@@ -528,6 +532,7 @@ final class Builtin {
         b.shell(x0, 45, z0, x1, 45, z1, dark);
         for (int x = x0; x <= x1; x += 3) { b.set(x, 45, z0, lamp); b.set(x, 45, z1, lamp); }
         for (int y = 8; y <= 44; y++) { b.set(x0, y, z0, gold); b.set(x1, y, z0, gold); }   // zlote listwy narozne
+        furnishHotel(b);
         return b;
     }
 
@@ -570,6 +575,7 @@ final class Builtin {
         b.shell(1, 23, 2, 36, 23, 12, seam);
         for (int cx : new int[]{9, 26}) b.fill(cx, 23, 6, cx + 1, 25, 7, brick);           // kominy
         for (int x : new int[]{14, 22}) { b.fill(x, 23, 7, x, 26, 7, blk("iron_bars")); }   // anteny
+        furnishBlok(b);
         return b;
     }
 
@@ -619,6 +625,7 @@ final class Builtin {
         b.fill(cx - 3, 7, 1, cx + 3, 7, 3, pil);
         for (int x : new int[]{cx - 3, cx + 3}) b.fill(x, 1, 1, x, 6, 1, blk("quartz_pillar"));
         for (int y = 8; y <= 20; y++) { b.set(cx, y, 2, lamp); }
+        furnishStalinka(b);
         return b;
     }
 
@@ -657,6 +664,7 @@ final class Builtin {
         for (int x = 8; x <= 16; x += 2) { b.set(x, 76, 8, lamp); b.set(x, 76, 16, lamp); }
         for (int y = 77; y <= 79; y++) b.set(12, y, 12, blk("iron_block"));
         b.set(12, 79, 12, lamp);
+        furnishSzklany(b);
         return b;
     }
 
@@ -695,6 +703,7 @@ final class Builtin {
         for (int x : new int[]{c - 3, c + 3}) b.fill(x, 1, 0, x, 7, 0, pil);
         b.fill(c - 3, 8, 0, c + 3, 8, 1, gold);
         for (int y = 9; y <= 40; y += 4) { b.set(c, y, 1, lamp); }
+        furnishArtDeco(b);
         return b;
     }
 
@@ -725,6 +734,7 @@ final class Builtin {
         // lewe skrzydlo z tarasem
         b.fill(3, 17, 22, 12, 17, 24, floor);
         b.shell(3, 18, 22, 12, 18, 24, blk("glass_pane"));
+        furnishBiurowiec(b);
         return b;
     }
 
@@ -757,6 +767,7 @@ final class Builtin {
         for (int x : new int[]{21, 23}) b.set(x, 7, 18, blk("iron_bars"));
         // lampy w holu
         for (int x = 8; x <= 24; x += 4) b.set(x, 12, 12, lamp);
+        furnishBank(b);
         return b;
     }
 
@@ -815,6 +826,7 @@ final class Builtin {
         for (int z = 14; z <= 36; z += 4) { b.set(5, 12, z, lamp); b.set(15, 12, z, lamp); }
         b.fill(9, 1, 38, 11, 1, 40, blk("quartz_block"));     // oltarz
         b.set(10, 2, 39, gold);
+        furnishKosciol(b);
         return b;
     }
 
@@ -854,6 +866,7 @@ final class Builtin {
         }
         b.fill(c - 3, 19, c + 4, c + 3, 19, c + 4, wood);                                     // ogon (stabilizator)
         for (int i = 0; i < 4; i++) b.set(c, 19, c + 5 + i, fence);
+        furnishWiatrak(b);
         return b;
     }
 
@@ -894,6 +907,7 @@ final class Builtin {
         b.carve(11, 2, 6, 11, 3, 6);
         b.set(13, 3, 3, blk("glass_pane")); b.set(15, 3, 5, blk("glass_pane")); b.set(13, 3, 8, blk("glass_pane"));
         b.gable(10, 2, 16, 9, 6, "spruce_stairs", blk("spruce_planks"), white, false);
+        furnishLatarnia(b);
         return b;
     }
 
@@ -955,6 +969,7 @@ final class Builtin {
         for (int[] p : new int[][]{{10, 11}, {20, 11}, {10, 21}, {20, 21}}) for (int y = 2; y <= 6; y++) b.set(p[0], y, p[1], blk("quartz_pillar"));
         b.set(12, 4, 12, blk("lantern")); b.set(18, 4, 20, blk("lantern"));
         for (int x : new int[]{12, 18}) for (int y = 1; y <= 4; y++) { b.set(x, y, 0, blk("sandstone_wall")); }
+        furnishPiramida(b);
         return b;
     }
 
@@ -997,6 +1012,7 @@ final class Builtin {
         b.hip(2, 2, 12, 12, 35, "deepslate_tile_stairs", blk("deepslate_tiles"));
         for (int y = 40; y <= 41; y++) b.set(7, y, 7, y == 41 ? gold : blk("iron_bars"));
         for (int[] p : new int[][]{{2, 2}, {12, 2}, {2, 12}, {12, 12}}) for (int y = 36; y <= 37; y++) b.set(p[0], y, p[1], blk("iron_bars"));
+        furnishWieza(b);
         return b;
     }
 
@@ -1028,6 +1044,7 @@ final class Builtin {
         b.fill(8, 17 - 1, 11, 12, 17 - 1, 15, wood);
         // snopki
         for (int[] p : new int[][]{{4, 1, 4}, {5, 1, 4}, {4, 2, 4}, {16, 1, 20}, {15, 1, 20}}) b.set(p[0], p[1], p[2], hay);
+        furnishStodola(b);
         return b;
     }
 
@@ -1054,6 +1071,7 @@ final class Builtin {
             tower(b, t[0], t[1], 3, 1, 17, 3);
         }
         for (int x = 8; x <= 32; x += 12) { b.set(x, 13, 5, blk("lantern")); }
+        furnishMur(b);
         return b;
     }
 
@@ -1089,6 +1107,518 @@ final class Builtin {
         b.gable(x0 - 1, z0 - 1, x1 + 1, z1 + 1, 22, "stone_brick_stairs", dark, wall, true);
         for (int x : new int[]{6, 12}) { b.set(x, 22, z0 - 1, trim); b.fill(x, 23, z0, x, 24, z0, glass); b.set(x, 25, z0 - 1, trim); }
         b.fill(14, 22, 11, 15, 28, 12, blk("bricks"));
+        furnishKamienica(b);
         return b;
+    }
+
+    // =================================================================== POMOCNICZE (wyposazenie)
+    static String dn(Direction d) {
+        return switch (d) {
+            case NORTH -> "north"; case SOUTH -> "south"; case EAST -> "east"; case WEST -> "west";
+            case UP -> "up"; default -> "down";
+        };
+    }
+
+    /** Blok z ustawionymi wlasciwosciami (pary nazwa, wartosc). */
+    static BlockState st(String id, String... kv) {
+        BlockState s = blk(id);
+        for (int i = 0; i + 1 < kv.length; i += 2) s = Props.set(s, kv[i], kv[i + 1]);
+        return s;
+    }
+
+    static void door(B b, int x, int y, int z, String id, Direction f, boolean hingeRight, boolean open) {
+        String h = hingeRight ? "right" : "left", o = open ? "true" : "false";
+        b.set(x, y, z, st(id, "facing", dn(f), "half", "lower", "hinge", h, "open", o));
+        b.set(x, y + 1, z, st(id, "facing", dn(f), "half", "upper", "hinge", h, "open", o));
+    }
+
+    /** Lozko: stopa w (x,y,z), glowa o jedno pole dalej w kierunku f. */
+    static void bed(B b, int x, int y, int z, String color, Direction f) {
+        b.set(x, y, z, st(color + "_bed", "facing", dn(f), "part", "foot"));
+        b.set(x + f.getStepX(), y, z + f.getStepZ(), st(color + "_bed", "facing", dn(f), "part", "head"));
+    }
+
+    static void chest(B b, int x, int y, int z, Direction f) { b.set(x, y, z, st("chest", "facing", dn(f))); }
+    static void furnace(B b, int x, int y, int z, String id, Direction f) { b.set(x, y, z, st(id, "facing", dn(f))); }
+    static void facing(B b, int x, int y, int z, String id, Direction f) { b.set(x, y, z, st(id, "facing", dn(f))); }
+
+    static void ladder(B b, int x, int y0, int y1, int z, Direction f) {
+        for (int y = y0; y <= y1; y++) b.set(x, y, z, st("ladder", "facing", dn(f)));
+    }
+
+    static void trapdoor(B b, int x, int y, int z, String id, Direction f, boolean top, boolean open) {
+        b.set(x, y, z, st(id, "facing", dn(f), "half", top ? "top" : "bottom", "open", open ? "true" : "false"));
+    }
+
+    static void lever(B b, int x, int y, int z, String face, Direction f, boolean powered) {
+        b.set(x, y, z, st("lever", "face", face, "facing", dn(f), "powered", powered ? "true" : "false"));
+    }
+
+    static void button(B b, int x, int y, int z, String id, String face, Direction f) {
+        b.set(x, y, z, st(id, "face", face, "facing", dn(f)));
+    }
+
+    static void gate(B b, int x, int y, int z, String id, Direction f, boolean open) {
+        b.set(x, y, z, st(id, "facing", dn(f), "open", open ? "true" : "false"));
+    }
+
+    static void table(B b, int x, int y, int z, String fence, String plate) {
+        b.set(x, y, z, blk(fence));
+        b.set(x, y + 1, z, blk(plate));
+    }
+
+    static void chair(B b, int x, int y, int z, Direction f) { b.set(x, y, z, stair("oak_stairs", f, false)); }
+
+    static void candle(B b, int x, int y, int z, String color, int n) {
+        b.set(x, y, z, st(color + "_candle", "candles", String.valueOf(n)));
+    }
+
+    static void hangingLantern(B b, int x, int y, int z) { b.set(x, y, z, st("lantern", "hanging", "true")); }
+
+    /** Biegi schodow (stopnie rosna o 1 na kazde pole) od poziomu plyty s do plyty top; dir: EAST lub WEST. */
+    static void flight(B b, int x, int z, int s, int top, Direction dir, String stairId) {
+        int h = top - s, sx = dir == Direction.EAST ? 1 : -1;
+        for (int i = 0; i < h; i++) {
+            int xx = x + sx * i;
+            b.carve(xx, s + 2 + i, z, xx, s + 3 + i, z);                       // wolna przestrzen nad stopniem
+            b.set(xx, s + 1 + i, z, stair(stairId, dir, false));
+        }
+    }
+
+    /** Klatka schodowa zygzakiem miedzy plytami s0, s0+hh, ...; x,z = narozne pole, szerokosc 3, dlugosc hh+2. */
+    static void stairCore(B b, int x, int z, int s0, int flights, int hh, String stairId) {
+        for (int k = 0; k < flights; k++) {
+            int s = s0 + k * hh;
+            if (k % 2 == 0) flight(b, x, z, s, s + hh, Direction.EAST, stairId);
+            else flight(b, x + hh + 1, z + 2, s, s + hh, Direction.WEST, stairId);
+        }
+    }
+
+    /** Pietro biurowe: biurka (fence + plyta), krzesla, lampy; w obszarze x0..x1, z0..z1 na poziomie y. */
+    static void office(B b, int x0, int z0, int x1, int z1, int y) {
+        for (int x = x0 + 1; x <= x1 - 1; x += 3)
+            for (int z = z0 + 1; z <= z1 - 1; z += 4) {
+                b.set(x, y, z, blk("spruce_trapdoor"));
+                b.set(x + 1, y, z, blk("spruce_trapdoor"));
+                chair(b, x, y, z + 1, Direction.NORTH);
+                b.set(x, y + 1, z, blk("light_gray_carpet"));
+                b.set(x + 1, y + 1, z, blk("lantern"));
+            }
+        for (int x = x0 + 1; x <= x1 - 1; x += 6) b.set(x, y + 2, z0, blk("glowstone"));
+    }
+
+    // =================================================================== WYPOSAZENIE BUDYNKOW
+    /** Kolejne klatki schodowe po liscie poziomow plyt (rozne wysokosci), zygzakiem; hmax = najdluzszy bieg. */
+    static void stairChain(B b, int x, int z, int[] levels, int hmax, String stairId) {
+        for (int k = 0; k + 1 < levels.length; k++) {
+            int s = levels[k], t = levels[k + 1];
+            if (k % 2 == 0) flight(b, x, z, s, t, Direction.EAST, stairId);
+            else flight(b, x + hmax + 1, z + 2, s, t, Direction.WEST, stairId);
+        }
+    }
+
+    private static void officeEx(B b, int x0, int z0, int x1, int z1, int y, int ex0, int ez0, int ex1, int ez1) {
+        for (int x = x0 + 1; x <= x1 - 2; x += 3)
+            for (int z = z0 + 1; z <= z1 - 2; z += 4) {
+                if (x + 1 >= ex0 && x <= ex1 && z + 1 >= ez0 && z <= ez1) continue;
+                b.set(x, y, z, blk("spruce_trapdoor"));
+                b.set(x + 1, y, z, blk("spruce_trapdoor"));
+                chair(b, x, y, z + 1, Direction.NORTH);
+                b.set(x + 1, y + 1, z, blk("lantern"));
+            }
+    }
+
+    private static void furnishDomek(B b) {
+        door(b, 6, 1, 3, "oak_door", Direction.SOUTH, false, false);
+        b.set(6, 3, 3, blk("glass_pane"));
+        bed(b, 3, 1, 10, "red", Direction.NORTH);
+        chest(b, 4, 1, 10, Direction.NORTH);
+        b.set(5, 1, 10, st("barrel", "facing", "up"));
+        furnace(b, 8, 1, 9, "furnace", Direction.NORTH);
+        furnace(b, 8, 1, 10, "blast_furnace", Direction.NORTH);
+        furnace(b, 9, 1, 10, "smoker", Direction.NORTH);
+        b.set(9, 1, 9, blk("crafting_table"));
+        table(b, 6, 1, 7, "oak_fence", "oak_pressure_plate");
+        chair(b, 5, 1, 7, Direction.WEST);
+        chair(b, 7, 1, 7, Direction.EAST);
+        for (int z = 5; z <= 6; z++) for (int y = 1; y <= 2; y++) b.set(3, y, z, blk("bookshelf"));
+        b.set(6, 1, 5, blk("red_carpet")); b.set(6, 1, 6, blk("red_carpet"));
+        hangingLantern(b, 6, 4, 7);
+        // latarnia ogrodowa z dzwignia i lampa (mechanizm)
+        b.fill(11, 1, 2, 11, 2, 2, blk("oak_fence"));
+        b.set(11, 3, 2, blk("redstone_lamp"));
+        lever(b, 12, 3, 2, "wall", Direction.EAST, true);
+        b.set(1, 1, 1, blk("composter"));
+    }
+
+    private static void furnishWilla(B b) {
+        door(b, 8, 2, 2, "dark_oak_door", Direction.SOUTH, true, false);
+        door(b, 9, 2, 2, "dark_oak_door", Direction.SOUTH, false, false);
+        for (int y = 2; y <= 4; y++) b.set(10, y, 2, blk("glass"));
+        b.set(8, 4, 2, blk("glass")); b.set(9, 4, 2, blk("glass"));
+        // salon
+        for (int x = 5; x <= 9; x++) b.set(x, 2, 5, stair("quartz_stairs", Direction.SOUTH, false));
+        b.set(7, 2, 7, blk("spruce_trapdoor"));
+        for (int x = 5; x <= 9; x++) for (int z = 6; z <= 8; z++) b.set(x, 2, z, blk("gray_carpet"));
+        b.fill(5, 3, 13, 9, 4, 13, blk("black_concrete"));                         // telewizor na scianie
+        // kuchnia
+        furnace(b, 11, 2, 13, "furnace", Direction.NORTH);
+        furnace(b, 12, 2, 13, "smoker", Direction.NORTH);
+        b.set(13, 2, 13, st("barrel", "facing", "up"));
+        b.set(14, 2, 13, blk("cauldron"));
+        b.set(15, 2, 13, blk("crafting_table"));
+        table(b, 13, 2, 8, "spruce_fence", "spruce_pressure_plate");
+        table(b, 14, 2, 8, "spruce_fence", "spruce_pressure_plate");
+        chair(b, 13, 2, 7, Direction.NORTH); chair(b, 14, 2, 7, Direction.NORTH);
+        chair(b, 13, 2, 9, Direction.SOUTH); chair(b, 14, 2, 9, Direction.SOUTH);
+        // schody na pietro (zawijasem wzdluz sciany)
+        flight(b, 9, 12, 1, 7, Direction.WEST, "quartz_stairs");
+        // sypialnia
+        bed(b, 4, 8, 5, "blue", Direction.NORTH);
+        b.set(3, 8, 4, st("barrel", "facing", "up")); b.set(5, 8, 4, st("barrel", "facing", "up"));
+        b.set(3, 9, 4, blk("lantern")); b.set(5, 9, 4, blk("lantern"));
+        chest(b, 3, 8, 8, Direction.EAST); chest(b, 3, 8, 9, Direction.EAST);
+        table(b, 8, 8, 4, "dark_oak_fence", "dark_oak_pressure_plate");
+        chair(b, 8, 8, 5, Direction.SOUTH);
+        b.set(9, 8, 13, blk("cauldron"));
+        for (int z = 6; z <= 8; z++) b.set(6, 8, z, blk("white_carpet"));
+        // taras
+        table(b, 13, 7, 8, "oak_fence", "oak_pressure_plate");
+        chair(b, 12, 7, 8, Direction.WEST); chair(b, 14, 7, 8, Direction.EAST);
+        b.set(15, 7, 4, blk("lantern"));
+    }
+
+    private static void furnishZamek(B b) {
+        int cx = 22;
+        // drzwi donzonu (2 skrzydla) + dokonczenie otworu
+        door(b, 21, 1, 17, "dark_oak_door", Direction.SOUTH, true, false);
+        door(b, 22, 1, 17, "dark_oak_door", Direction.SOUTH, false, false);
+        for (int y = 1; y <= 4; y++) b.set(23, y, 17, cm(23, y, 17));
+        for (int y = 3; y <= 4; y++) { b.set(21, y, 17, blk("iron_bars")); b.set(22, y, 17, blk("iron_bars")); }
+        // wielka sala: dywan, stoly, laweczki, kominek, tron
+        for (int z = 18; z <= 28; z++) b.set(cx, 1, z, blk("red_carpet"));
+        for (int xc : new int[]{18, 26}) for (int z = 20; z <= 27; z++) {
+            table(b, xc, 1, z, "spruce_fence", "spruce_pressure_plate");
+            b.set(xc - 1, 1, z, stair("oak_stairs", Direction.WEST, false));
+            b.set(xc + 1, 1, z, stair("oak_stairs", Direction.EAST, false));
+        }
+        for (int z = 21; z <= 23; z++) b.set(28, 1, z, blk("stone_bricks"));
+        furnace(b, 27, 1, 22, "furnace", Direction.WEST);
+        for (int x = 20; x <= 24; x += 2) hangingLantern(b, x, 7, 24);
+        b.set(cx, 1, 29, stair("quartz_stairs", Direction.NORTH, false));             // tron
+        b.set(cx, 2, 30, blk("gold_block"));
+        // schody miedzy pietrami (3 biegi)
+        flight(b, 16, 30, 0, 8, Direction.EAST, "stone_brick_stairs");
+        flight(b, 27, 28, 8, 15, Direction.WEST, "stone_brick_stairs");
+        flight(b, 16, 30, 15, 22, Direction.EAST, "stone_brick_stairs");
+        // sypialnie (pietro 2)
+        bed(b, 17, 9, 19, "red", Direction.EAST); bed(b, 17, 9, 22, "red", Direction.EAST);
+        bed(b, 27, 9, 19, "red", Direction.WEST); bed(b, 27, 9, 22, "red", Direction.WEST);
+        chest(b, 17, 9, 21, Direction.EAST); chest(b, 27, 9, 21, Direction.WEST);
+        for (int x = 20; x <= 24; x++) b.set(x, 9, 20, blk("blue_carpet"));
+        // biblioteka (pietro 3)
+        for (int x = 17; x <= 27; x++) for (int y = 16; y <= 18; y++) b.set(x, y, 18, blk("bookshelf"));
+        facing(b, 22, 16, 21, "lectern", Direction.SOUTH);
+        b.set(22, 16, 25, blk("enchanting_table"));
+        b.set(20, 16, 25, blk("brewing_stand"));
+        b.set(24, 16, 25, blk("cauldron"));
+        for (int x = 18; x <= 26; x += 4) hangingLantern(b, x, 21, 22);
+        // dziedziniec: kowal
+        b.set(10, 1, 20, blk("anvil")); b.set(11, 1, 20, st("grindstone", "face", "floor", "facing", "north"));
+        furnace(b, 12, 1, 20, "blast_furnace", Direction.SOUTH);
+        b.set(9, 1, 20, st("barrel", "facing", "up"));
+    }
+
+    private static void furnishStatek(B b) {
+        int cx = 7;
+        // przegroda i drzwi kajuty kapitana
+        for (int dx = -6; dx <= 6; dx++) for (int y = 6; y <= 9; y++) b.set(cx + dx, y, 37, blk("dark_oak_planks"));
+        door(b, cx, 6, 37, "spruce_door", Direction.SOUTH, false, false);
+        bed(b, cx - 3, 6, 43, "red", Direction.SOUTH);
+        b.set(cx - 4, 6, 43, st("barrel", "facing", "up")); b.set(cx - 2, 6, 44, st("barrel", "facing", "up"));
+        chest(b, cx + 3, 6, 44, Direction.NORTH); chest(b, cx + 4, 6, 44, Direction.NORTH);
+        table(b, cx, 6, 41, "dark_oak_fence", "dark_oak_pressure_plate");
+        chair(b, cx - 1, 6, 41, Direction.WEST); chair(b, cx + 1, 6, 41, Direction.EAST);
+        facing(b, cx + 3, 6, 40, "lectern", Direction.WEST);
+        for (int z = 39; z <= 45; z++) b.set(cx - 5, 6, z, blk("bookshelf"));
+        hangingLantern(b, cx, 9, 41); hangingLantern(b, cx, 9, 44);
+        // koło sterowe (przy rufie na pokladzie)
+        facing(b, cx, 11, 40, "lectern", Direction.SOUTH);
+        b.set(cx, 12, 40, blk("lantern"));
+        // ladownia: beczki i skrzynie, luk z trapdoor
+        for (int z = 14; z <= 32; z += 2) { b.set(cx - 3, 2, z, st("barrel", "facing", "up")); b.set(cx + 3, 2, z, st("barrel", "facing", "up")); }
+        for (int z = 15; z <= 31; z += 4) { chest(b, cx - 2, 2, z, Direction.EAST); chest(b, cx + 2, 2, z, Direction.WEST); }
+        trapdoor(b, cx, 5, 20, "oak_trapdoor", Direction.NORTH, false, false);
+        // pochodnie na bukszprycie/dziobie
+        b.set(cx - 1, 10, 1, blk("lantern")); b.set(cx + 1, 10, 1, blk("lantern"));
+    }
+
+    private static void furnishHotel(B b) {
+        for (int f = 0; f <= 8; f++) {
+            int y0 = 8 + 4 * f;
+            int y = y0 + 1;
+            for (int x = 6; x <= 15; x++) for (int yy = y; yy <= y + 2; yy++) { b.set(x, yy, 11, blk("smooth_quartz")); b.set(x, yy, 13, blk("smooth_quartz")); }
+            for (int x : new int[]{9, 13}) for (int yy = y; yy <= y + 2; yy++) for (int z : new int[]{8, 9, 10, 14, 15, 16}) b.set(x, yy, z, blk("smooth_quartz"));
+            for (int xc : new int[]{7, 11, 15}) {
+                door(b, xc, y, 11, "spruce_door", Direction.NORTH, false, false);       // pokoje polnocne
+                door(b, xc, y, 13, "spruce_door", Direction.SOUTH, false, false);       // pokoje poludniowe
+                bed(b, xc, y, 9, "red", Direction.NORTH);
+                b.set(xc - 1, y, 8, st("barrel", "facing", "up")); b.set(xc + 1, y, 8, st("barrel", "facing", "up"));
+                b.set(xc - 1, y + 1, 8, blk("lantern")); b.set(xc + 1, y + 1, 8, blk("lantern"));
+                table(b, xc + 1, y, 10, "spruce_fence", "spruce_pressure_plate");
+                bed(b, xc, y, 15, "blue", Direction.SOUTH);
+                b.set(xc - 1, y, 16, st("barrel", "facing", "up")); b.set(xc + 1, y, 16, st("barrel", "facing", "up"));
+                b.set(xc - 1, y + 1, 16, blk("lantern")); b.set(xc + 1, y + 1, 16, blk("lantern"));
+                table(b, xc + 1, y, 14, "spruce_fence", "spruce_pressure_plate");
+            }
+            for (int x = 6; x <= 16; x++) b.set(x, y, 12, blk("red_carpet"));
+            for (int x : new int[]{8, 12, 16}) b.set(x, y0 + 4, 12, blk("sea_lantern"));
+        }
+        stairCore(b, 17, 11, 8, 9, 4, "quartz_stairs");
+        flight(b, 22, 13, 1, 8, Direction.WEST, "quartz_stairs");                // z lobby do pierwszego pietra
+        // lobby: recepcja, dzwonek, rosliny, kanapy, lampy, drzwi wejsciowe
+        for (int x = 9; x <= 19; x++) { b.set(x, 2, 10, blk("quartz_block")); b.set(x, 3, 10, blk("quartz_slab")); }
+        facing(b, 14, 4, 10, "lectern", Direction.SOUTH);
+        b.set(11, 4, 10, st("bell", "attachment", "floor", "facing", "north"));
+        for (int x = 8; x <= 20; x += 4) { b.set(x, 2, 15, stair("quartz_stairs", Direction.NORTH, false)); b.set(x + 1, 2, 15, stair("quartz_stairs", Direction.NORTH, false)); }
+        for (int x : new int[]{4, 24}) for (int z : new int[]{6, 18}) b.set(x, 2, z, blk("potted_fern"));
+        for (int x = 8; x <= 20; x += 4) for (int z = 8; z <= 16; z += 4) hangingLantern(b, x, 6, z);
+        for (int x = 12; x <= 16; x++) for (int z = 5; z <= 9; z++) b.set(x, 2, z, blk("red_carpet"));
+        for (int y = 2; y <= 5; y++) for (int x : new int[]{12, 15, 16}) b.set(x, y, 4, blk("glass"));
+        door(b, 13, 2, 4, "spruce_door", Direction.SOUTH, true, false);
+        door(b, 14, 2, 4, "spruce_door", Direction.SOUTH, false, false);
+        b.set(13, 4, 4, blk("glass")); b.set(14, 4, 4, blk("glass")); b.set(13, 5, 4, blk("glass")); b.set(14, 5, 4, blk("glass"));
+        // mechanizm: lampa na dzwignie przy wejsciu
+        b.set(10, 5, 4, blk("redstone_lamp")); lever(b, 10, 4, 5, "wall", Direction.SOUTH, true);
+    }
+
+    private static void furnishBlok(B b) {
+        int[] ents = {4, 16, 28};
+        for (int x0 : ents) {
+            door(b, x0, 2, 2, "spruce_door", Direction.SOUTH, true, false);
+            door(b, x0 + 1, 2, 2, "spruce_door", Direction.SOUTH, false, false);
+            for (int y = 4; y <= 4; y++) { b.set(x0, y, 2, blk("glass_pane")); b.set(x0 + 1, y, 2, blk("glass_pane")); }
+            stairCore(b, x0 + 2, 3, 1, 5, 4, "stone_brick_stairs");
+            b.set(x0 - 1, 2, 3, blk("dropper"));                                      // skrzynki pocztowe
+            b.set(x0 - 1, 3, 3, blk("dropper"));
+        }
+        int[] xs = {10, 22, 34};
+        for (int f = 0; f < 5; f++) {
+            int y = 4 * f + 2;
+            for (int xs0 : xs) {
+                bed(b, xs0, y, 11, f % 2 == 0 ? "red" : "blue", Direction.NORTH);
+                chest(b, xs0 + 1, y, 11, Direction.NORTH);
+                furnace(b, xs0 + 3, y, 11, "furnace", Direction.NORTH);
+                b.set(xs0 + 4, y, 11, blk("cauldron"));
+                table(b, xs0 + 2, y, 8, "oak_fence", "oak_pressure_plate");
+                chair(b, xs0 + 1, y, 8, Direction.WEST); chair(b, xs0 + 3, y, 8, Direction.EAST);
+                b.set(xs0 + 1, y, 6, blk("brown_carpet")); b.set(xs0 + 2, y, 6, blk("brown_carpet"));
+                hangingLantern(b, xs0 + 2, y + 2, 8);
+            }
+        }
+    }
+
+    private static void furnishBiurowiec(B b) {
+        int[] lv = {1, 5, 9, 13, 17, 21, 25, 27};
+        stairChain(b, 5, 6, lv, 4, "quartz_stairs");
+        for (int k = 0; k + 1 < lv.length; k++) officeEx(b, 3, 3, 33, 21, lv[k] + 1, 5, 6, 12, 8);
+        for (int x = 8; x <= 28; x += 4) { b.set(x, 3, 4, blk("potted_fern")); }
+        door(b, 17, 2, 3, "iron_door", Direction.SOUTH, true, false);
+        door(b, 18, 2, 3, "iron_door", Direction.SOUTH, false, false);
+        b.set(16, 3, 2, blk("stone_pressure_plate")); b.set(19, 3, 2, blk("stone_pressure_plate"));
+    }
+
+    private static void furnishSzklany(B b) {
+        int[] lv = {7, 11, 15, 19, 23, 27, 31, 35, 39, 43, 45, 48, 52, 56, 60, 64, 65, 68, 72, 75};
+        stairChain(b, 9, 10, lv, 4, "quartz_stairs");
+        for (int k = 0; k + 1 < lv.length; k++) if (lv[k + 1] - lv[k] >= 3) {
+            int a = lv[k] < 45 ? 3 : lv[k] < 65 ? 6 : 9, c = lv[k] < 45 ? 21 : lv[k] < 65 ? 18 : 15;
+            officeEx(b, a, a, c, c, lv[k] + 1, 9, 10, 16, 14);
+        }
+        flight(b, 17, 8, 1, 7, Direction.WEST, "quartz_stairs");
+        for (int x = 6; x <= 18; x += 4) { b.set(x, 2, 20, stair("quartz_stairs", Direction.NORTH, false)); b.set(x, 2, 6, blk("potted_fern")); }
+        door(b, 11, 2, 2, "iron_door", Direction.SOUTH, true, false);
+        door(b, 12, 2, 2, "iron_door", Direction.SOUTH, false, false);
+    }
+
+    private static void furnishStalinka(B b) {
+        stairChain(b, 14, 14, new int[]{1, 6, 11, 16, 21, 27, 33, 39, 45, 50, 55, 61}, 6, "stone_brick_stairs");
+        stairChain(b, 16, 17, new int[]{61, 66, 71, 75}, 5, "stone_brick_stairs");
+        for (int[] lv : new int[][]{{1, 6}, {6, 11}, {11, 16}, {16, 21}}) officeEx(b, 2, 2, 36, 36, lv[0] + 1, 14, 14, 21, 18);
+        for (int[] lv : new int[][]{{21, 27}, {27, 33}, {33, 39}, {39, 45}}) officeEx(b, 8, 8, 30, 30, lv[0] + 1, 14, 14, 21, 18);
+        door(b, 18, 2, 2, "iron_door", Direction.SOUTH, true, false);
+        door(b, 19, 2, 2, "iron_door", Direction.SOUTH, false, false);
+        flight(b, 25, 6, 1, 6, Direction.WEST, "stone_brick_stairs");
+    }
+
+    private static void furnishArtDeco(B b) {
+        int[] lv = {1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 43, 47, 51, 55, 59, 63, 67, 71, 75, 79, 83, 85, 89, 93, 97};
+        stairChain(b, 11, 12, lv, 4, "quartz_stairs");
+        for (int k = 0; k + 1 < lv.length; k++) if (lv[k + 1] - lv[k] >= 3) {
+            int a = lv[k] < 43 ? 1 : lv[k] < 67 ? 4 : lv[k] < 85 ? 7 : 10;
+            int c = 30 - a;
+            officeEx(b, a, a, c, c, lv[k] + 1, 11, 12, 16, 16);
+        }
+        door(b, 14, 2, 1, "iron_door", Direction.SOUTH, true, false);
+        door(b, 15, 2, 1, "iron_door", Direction.SOUTH, false, false);
+        b.set(13, 3, 0, blk("stone_pressure_plate")); b.set(16, 3, 0, blk("stone_pressure_plate"));
+    }
+
+    private static void furnishBank(B b) {
+        // lada kasjerow, okienka, krzesla
+        for (int x = 5; x <= 15; x++) { b.set(x, 3, 12, blk("quartz_block")); b.set(x, 4, 12, blk("quartz_slab")); }
+        for (int x = 6; x <= 14; x += 2) { b.set(x, 5, 12, blk("glass_pane")); b.set(x, 6, 12, blk("glass_pane")); chair(b, x, 3, 14, Direction.NORTH); }
+        b.set(20, 3, 9, st("dispenser", "facing", "south")); button(b, 20, 4, 9, "stone_button", "floor", Direction.SOUTH);
+        for (int z = 8; z <= 11; z++) b.set(15, 3, z, blk("red_carpet"));
+        for (int x = 12; x <= 18; x++) b.set(x, 3, 8, blk("red_carpet"));
+        for (int x = 8; x <= 24; x += 4) hangingLantern(b, x, 12, 14);
+        // drzwi wejsciowe
+        door(b, 14, 3, 7, "spruce_door", Direction.SOUTH, true, false);
+        door(b, 15, 3, 7, "spruce_door", Direction.SOUTH, false, false);
+        b.set(16, 3, 7, blk("glass_pane")); b.set(16, 4, 7, blk("glass_pane")); b.set(16, 5, 7, blk("glass_pane"));
+        // skarbiec: zelazne drzwi otwierane dzwignia, skrzynki depozytowe
+        for (int y = 3; y <= 6; y++) b.set(21, y, 18, blk("iron_block"));
+        door(b, 22, 3, 18, "iron_door", Direction.SOUTH, true, false);
+        for (int y = 3; y <= 6; y++) b.set(23, y, 18, blk("iron_block"));
+        lever(b, 21, 4, 17, "wall", Direction.NORTH, false);
+        for (int x = 19; x <= 25; x += 2) { chest(b, x, 3, 25, Direction.NORTH); chest(b, x, 4, 25, Direction.NORTH); }
+        for (int z = 20; z <= 24; z += 2) { b.set(19, 3, z, st("barrel", "facing", "up")); b.set(25, 3, z, st("barrel", "facing", "up")); }
+        // tajne wyjscie na tlok (mechanizm): lepki tlok + dzwignia
+        b.set(26, 4, 22, st("sticky_piston", "facing", "west"));
+        lever(b, 26, 5, 22, "ceiling", Direction.NORTH, false);
+    }
+
+    private static void furnishKosciol(B b) {
+        // portal glowny
+        door(b, 9, 1, 0, "dark_oak_door", Direction.SOUTH, true, false);
+        door(b, 10, 1, 0, "dark_oak_door", Direction.SOUTH, false, false);
+        for (int y = 1; y <= 5; y++) b.set(11, y, 0, cm(11, y, 0));
+        for (int y = 3; y <= 5; y++) { b.set(9, y, 0, blk("glass_pane")); b.set(10, y, 0, blk("glass_pane")); }
+        // lawki, dywan, oltarz
+        for (int z = 14; z <= 34; z += 2) for (int x : new int[]{6, 7, 8, 12, 13, 14}) b.set(x, 1, z, stair("spruce_stairs", Direction.NORTH, false));
+        for (int z = 11; z <= 37; z++) b.set(10, 1, z, blk("red_carpet"));
+        candle(b, 9, 2, 38, "white", 4); candle(b, 11, 2, 38, "white", 4); candle(b, 10, 2, 40, "red", 3);
+        facing(b, 10, 1, 35, "lectern", Direction.NORTH);
+        for (int z = 14; z <= 34; z += 4) { b.set(5, 6, z, blk("lantern")); b.set(15, 6, z, blk("lantern")); }
+        for (int z = 12; z <= 36; z += 6) { b.set(5, 5, z, st("wall_torch", "facing", "east")); b.set(15, 5, z, st("wall_torch", "facing", "west")); }
+        // wieza: drabina z podestami i dzwon
+        for (int y = 1; y <= 28; y++) b.set(8, y, 4, blk("oak_planks"));
+        ladder(b, 9, 1, 28, 4, Direction.EAST);
+        b.carve(9, 9, 4, 9, 9, 4); b.carve(9, 18, 4, 9, 18, 4);
+        b.set(10, 28, 4, st("bell", "attachment", "ceiling", "facing", "north"));
+        // organy i mechanizm (lampy + dzwignia przy oltarzu)
+        for (int x = 5; x <= 7; x++) for (int y = 2; y <= 6; y++) b.set(x, y, 12, blk("iron_bars"));
+        b.set(6, 1, 13, blk("note_block"));
+        b.set(7, 1, 38, blk("redstone_lamp")); lever(b, 8, 1, 38, "floor", Direction.EAST, true);
+    }
+
+    private static void furnishWiatrak(B b) {
+        int c = 11;
+        door(b, c, 1, c - 5, "spruce_door", Direction.SOUTH, false, false);
+        b.set(c, 3, c - 5, blk("glass_pane"));
+        for (int y = 1; y <= 18; y++) b.set(c - 3, y, c, blk("oak_planks"));
+        ladder(b, c - 2, 1, 18, c, Direction.EAST);
+        b.carve(c - 2, 6, c, c - 2, 6, c); b.carve(c - 2, 12, c, c - 2, 12, c);
+        b.set(c + 2, 1, c, st("grindstone", "face", "floor", "facing", "north"));
+        for (int z : new int[]{c - 3, c - 2}) { b.set(c + 2, 1, z, blk("hay_block")); b.set(c + 3, 1, z, st("barrel", "facing", "up")); }
+        b.set(c + 1, 1, c + 3, blk("composter"));
+        b.set(c + 2, 7, c, blk("hopper")); b.set(c + 2, 8, c, st("barrel", "facing", "up"));
+        hangingLantern(b, c, 5, c); hangingLantern(b, c, 11, c);
+        chest(b, c - 1, 7, c + 3, Direction.NORTH);
+    }
+
+    private static void furnishLatarnia(B b) {
+        int c = 8;
+        door(b, c, 2, c - 4, "spruce_door", Direction.SOUTH, false, false);
+        for (int y = 2; y <= 29; y++) b.set(c - 2, y, c, blk("stone_bricks"));
+        ladder(b, c - 1, 2, 29, c, Direction.EAST);
+        for (int y : new int[]{8, 15, 22, 28}) b.carve(c - 1, y, c, c - 1, y, c);
+        hangingLantern(b, c, 7, c); hangingLantern(b, c, 14, c);
+        // domek latarnika
+        door(b, 11, 2, 6, "spruce_door", Direction.WEST, false, false);
+        bed(b, 14, 2, 5, "blue", Direction.NORTH);
+        chest(b, 13, 2, 7, Direction.NORTH);
+        furnace(b, 12, 2, 7, "furnace", Direction.NORTH);
+        table(b, 13, 2, 5, "spruce_fence", "spruce_pressure_plate");
+        chair(b, 12, 2, 5, Direction.WEST);
+        hangingLantern(b, 13, 5, 6);
+        // dzwignia i lampa sygnalowa
+        b.set(c + 3, 29, c, blk("redstone_lamp")); lever(b, c + 4, 29, c, "wall", Direction.EAST, true);
+    }
+
+    private static void furnishKamienica(B b) {
+        int[] lv = {1, 6, 11, 16, 21};
+        stairChain(b, 3, 10, lv, 5, "stone_brick_stairs");
+        door(b, 8, 1, 2, "dark_oak_door", Direction.SOUTH, true, false);
+        door(b, 9, 1, 2, "dark_oak_door", Direction.SOUTH, false, false);
+        for (int y = 1; y <= 4; y++) b.set(10, y, 2, blk("glass_pane"));
+        for (int k = 0; k < 4; k++) {
+            int y = lv[k] + 1;
+            bed(b, 14, y, 12, k % 2 == 0 ? "red" : "blue", Direction.NORTH);
+            chest(b, 15, y, 12, Direction.NORTH);
+            furnace(b, 14, y, 4, "furnace", Direction.SOUTH);
+            b.set(15, y, 4, blk("cauldron"));
+            table(b, 11, y, 7, "oak_fence", "oak_pressure_plate");
+            chair(b, 10, y, 7, Direction.WEST); chair(b, 12, y, 7, Direction.EAST);
+            b.set(11, y, 9, blk("brown_carpet")); b.set(11, y, 10, blk("brown_carpet"));
+            hangingLantern(b, 11, y + 3, 7);
+        }
+        // sklep na parterze: lada i polki
+        for (int x = 4; x <= 7; x++) b.set(x, 2, 5, st("barrel", "facing", "up"));
+        b.set(5, 2, 8, blk("smooth_stone"));
+    }
+
+    private static void furnishStodola(B b) {
+        for (int z = 6; z <= 22; z += 4) {
+            for (int x = 14; x <= 17; x++) b.set(x, 1, z, blk("oak_fence"));
+            gate(b, 13, 1, z + 2, "oak_fence_gate", Direction.EAST, false);
+            b.set(15, 1, z + 1, blk("hay_block")); b.set(16, 1, z + 2, st("barrel", "facing", "up"));
+        }
+        b.fill(3, 8, 14, 17, 8, 25, blk("oak_planks"));
+        for (int y = 1; y <= 8; y++) b.set(3, y, 20, blk("oak_planks"));
+        ladder(b, 4, 1, 8, 20, Direction.EAST);
+        b.carve(4, 8, 20, 4, 8, 20);
+        for (int x = 5; x <= 9; x++) for (int z = 16; z <= 18; z++) b.set(x, 9, z, blk("hay_block"));
+        chest(b, 5, 1, 4, Direction.SOUTH); chest(b, 6, 1, 4, Direction.SOUTH);
+        b.set(8, 1, 4, blk("cauldron")); b.set(9, 1, 4, blk("composter"));
+        for (int x = 5; x <= 11; x += 3) b.set(x, 9, 6, blk("lantern"));
+    }
+
+    private static void furnishWieza(B b) {
+        door(b, 6, 1, 2, "dark_oak_door", Direction.SOUTH, true, false);
+        door(b, 7, 1, 2, "dark_oak_door", Direction.SOUTH, false, false);
+        for (int y = 1; y <= 4; y++) b.set(8, y, 2, blk("bricks"));
+        for (int y = 1; y <= 33; y++) b.set(3, y, 7, blk("stone_bricks"));
+        ladder(b, 4, 1, 33, 7, Direction.EAST);
+        for (int y : new int[]{8, 16}) { b.fill(4, y, 3, 11, y, 11, blk("oak_planks")); b.carve(4, y, 7, 4, y, 7); }
+        b.carve(4, 23, 7, 4, 23, 7); b.carve(4, 34, 7, 4, 34, 7);
+        for (int y = 24; y <= 30; y++) b.set(7, y, 7, st("chain", "axis", "y"));
+        b.set(7, 23, 7, blk("gold_block"));
+        b.set(7, 33, 7, st("bell", "attachment", "ceiling", "facing", "north"));
+        hangingLantern(b, 7, 7, 7); hangingLantern(b, 7, 15, 7);
+        b.set(9, 17, 9, st("barrel", "facing", "up")); chest(b, 10, 17, 9, Direction.NORTH);
+    }
+
+    private static void furnishMur(B b) {
+        door(b, 6, 1, 5, "iron_door", Direction.EAST, false, false);
+        door(b, 34, 1, 5, "iron_door", Direction.WEST, false, false);
+        lever(b, 17, 4, 4, "wall", Direction.EAST, false);
+        for (int x = 18; x <= 22; x++) b.set(x, 8, 4, blk("iron_bars"));
+        for (int x = 10; x <= 30; x += 4) b.set(x, 11, 5, blk("lantern"));
+    }
+
+    private static void furnishPiramida(B b) {
+        // pulapka: plyta naciskowa + pyl + dozownik w scianie korytarza
+        b.set(15, 1, 6, blk("stone_pressure_plate"));
+        b.set(14, 1, 6, blk("redstone_wire"));
+        b.set(13, 1, 6, st("dispenser", "facing", "east"));
+        b.set(15, 1, 10, blk("stone_pressure_plate"));
+        b.set(16, 1, 10, blk("redstone_wire"));
+        b.set(17, 1, 10, st("dispenser", "facing", "west"));
+        // komnata: skrzynie, drzwi do skarbca, lampy
+        chest(b, 11, 2, 12, Direction.EAST); chest(b, 11, 2, 14, Direction.EAST); chest(b, 19, 2, 20, Direction.WEST);
+        b.set(12, 2, 20, st("barrel", "facing", "up"));
+        for (int[] p : new int[][]{{10, 12}, {20, 12}}) b.set(p[0], 5, p[1], st("wall_torch", "facing", p[0] == 10 ? "east" : "west"));
+        b.set(15, 3, 21, st("lever", "face", "wall", "facing", "north", "powered", "false"));
     }
 }

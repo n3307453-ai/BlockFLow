@@ -10,12 +10,19 @@ final class Ui {
     private Ui() {}
 
     private static boolean pendingMenu;
+    private static int closeIn;
+
+    /** Po postawieniu tabliczki serwer otwiera okno edycji tekstu - zamykamy je. */
+    static void closeScreenSoon() {
+        closeIn = 2;
+    }
 
     static void openMenuNextTick() {
         pendingMenu = true;
     }
 
     static void tick() {
+        if (closeIn > 0 && --closeIn == 0) open(null);
         if (pendingMenu) {
             pendingMenu = false;
             open(new MenuScreen());
