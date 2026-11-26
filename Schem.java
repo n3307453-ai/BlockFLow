@@ -88,6 +88,15 @@ final class Schem {
                     out.writeShort(c.z());
                     out.writeInt(pal.get(c.state()));
                 }
+                int tn = 0;                                          // tekst tabliczek
+                for (Flow.Cell c : Flow.clip) if (c.text() != null) tn++;
+                out.writeInt(tn);
+                for (int i = 0; i < Flow.clip.length; i++) {
+                    String[] t = Flow.clip[i].text();
+                    if (t == null) continue;
+                    out.writeInt(i);
+                    for (int k = 0; k < 4; k++) out.writeUTF(k < t.length && t[k] != null ? t[k] : "");
+                }
             }
             return "Zapisano w slocie " + slot + " (" + Flow.clip.length + " blokow, "
                     + Flow.sx + "x" + Flow.sy + "x" + Flow.sz + ").";
@@ -107,14 +116,28 @@ final class Schem {
             int pn = in.readInt();
             List<BlockState> pal = new ArrayList<>(pn);
             for (int i = 0; i < pn; i++) pal.add(readState(in));
+            int[] cx = new int[count], cy = new int[count], cz = new int[count];
+            BlockState[] cs = new BlockState[count];
+            for (int i = 0; i < count; i++) {
+                cx[i] = in.readShort(); cy[i] = in.readShort(); cz[i] = in.readShort();
+                int idx = in.readInt();
+                cs[i] = (idx >= 0 && idx < pal.size()) ? pal.get(idx) : null;
+            }
+            String[][] texts = new String[count][];
+            try {                                                    // starsze zapisy nie maja tej sekcji
+                int tn = in.readInt();
+                for (int k = 0; k < tn; k++) {
+                    int ci = in.readInt();
+                    String[] t = new String[4];
+                    for (int q = 0; q < 4; q++) t[q] = in.readUTF();
+                    if (ci >= 0 && ci < count) texts[ci] = t;
+                }
+            } catch (java.io.EOFException ignored) { }
             List<Flow.Cell> cells = new ArrayList<>(count);
             int missing = 0;
             for (int i = 0; i < count; i++) {
-                int x = in.readShort(), y = in.readShort(), z = in.readShort();
-                int idx = in.readInt();
-                BlockState st = (idx >= 0 && idx < pal.size()) ? pal.get(idx) : null;
-                if (st == null) { missing++; continue; }
-                cells.add(new Flow.Cell(x, y, z, st));
+                if (cs[i] == null) { missing++; continue; }
+                cells.add(new Flow.Cell(cx[i], cy[i], cz[i], cs[i], texts[i]));
             }
             Flow.setClipboard(cells.toArray(new Flow.Cell[0]), sx, sy, sz);
             return "Wczytano slot " + slot + " (" + cells.size() + " blokow, " + sx + "x" + sy + "x" + sz + ")"

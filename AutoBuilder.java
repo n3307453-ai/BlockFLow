@@ -46,6 +46,9 @@ final class AutoBuilder {
     static int[] attempts = new int[0];
     static int[] destroys = new int[0];
     static int[] clicks = new int[0];
+    static boolean[] placedHere = new boolean[0];
+    static final int MAX_TRIES = 8;
+    private static final java.util.Map<String, Integer> skippedTypes = new java.util.TreeMap<>();
     static int placedCount, skippedCount, approxCount, destroyCount;
     static int targetIdx = -1;
     static int maxPlacedY = Integer.MIN_VALUE;
@@ -105,6 +108,8 @@ final class AutoBuilder {
         attempts = new int[Flow.n];
         destroys = new int[Flow.n];
         clicks = new int[Flow.n];
+        placedHere = new boolean[Flow.n];
+        skippedTypes.clear();
         tempRounds = new int[Flow.n];
         tempQueue.clear();
         tempPlaced.clear();
@@ -187,6 +192,7 @@ final class AutoBuilder {
         resetFlight();
         tempQueue.clear();
         removeQueue.clear();
+        Ui.clearSigns();
     }
 
     // ------------------------------------------------------------------ petla
@@ -255,6 +261,12 @@ final class AutoBuilder {
         String extra = "";
         if (skippedCount > 0) extra += " (pominieto " + skippedCount + " - przeszkoda/brak podparcia/brak przedmiotu)";
         if (approxCount > 0) extra += " (" + approxCount + " z przyblizonym stanem)";
+        if (!skippedTypes.isEmpty()) {
+            StringBuilder sb = new StringBuilder(" Bez przedmiotu (nie da sie postawic): ");
+            int n = 0;
+            for (var e : skippedTypes.entrySet()) { if (n++ > 0) sb.append(", "); if (n > 6) { sb.append("..."); break; } sb.append(e.getKey()).append(" x").append(e.getValue()); }
+            extra += sb;
+        }
         Msg.chat("Gotowe! " + Flow.doneCount + "/" + Flow.n + extra);
     }
 
@@ -346,7 +358,11 @@ final class AutoBuilder {
         if (Match.same(cur, want)) { markDone(i); return true; }
 
         Item item = want.getBlock().asItem();
-        if (item == Items.AIR) { skip(i); return false; }      // np. woda, lawa, ogien - brak przedmiotu
+        if (item == Items.AIR) {                                // np. woda, lawa, ogien - brak przedmiotu
+            skippedTypes.merge(Props.id(want), 1, Integer::sum);
+            skip(i);
+            return false;
+        }
 
         // druga polowka drzwi / lozka / wysokiej rosliny powstaje razem z pierwsza
         if ("upper".equals(Props.get(want, "half")) || "head".equals(Props.get(want, "part"))) {
@@ -378,7 +394,7 @@ final class AutoBuilder {
         // ten sam blok, zly stan
         if (cur.getBlock() == want.getBlock()) {
             if (Match.sameExceptClickable(cur, want)) return clickFix(p, gm, pos, i);   // otwarcie/dzwignia/przekaznik
-            if (attempts[i] >= 3) {         // trzy sposoby wyprobowane - akceptujemy przyblizenie
+            if (attempts[i] >= MAX_TRIES) {  // wszystkie sposoby wyprobowane - akceptujemy przyblizenie
                 Flow.approx[i] = true;
                 Flow.skip[i] = true;
                 approxCount++;
@@ -388,16 +404,20 @@ final class AutoBuilder {
             return destroy(gm, pos, i);
         }
 
-        // obcy blok na miejscu
+        // inny blok na miejscu
         if (!cur.canBeReplaced()) {
+            if (placedHere[i]) {            // sami postawilismy zly wariant (np. tabliczka scienna zamiast stojacej) - burzymy i probujemy inaczej
+                if (attempts[i] >= MAX_TRIES) { skip(i); return false; }
+                return destroy(gm, pos, i);
+            }
             if (!replace) { skip(i); return false; }
             return destroy(gm, pos, i);
         }
 
-        // wybor sposobu stawiania (3 strategie)
+        // wybor sposobu stawiania: najpierw symulacja vanilli (dokladnie ten stan), awaryjnie heurystyka
         int strat = attempts[i];
-        Plan pl = null;
-        for (int k = 0; k < 3 && pl == null; k++) pl = plan(lv, pos, want, strat + k);
+        Plan pl = solve(lv, p, pos, want, item, strat);
+        for (int k = 0; pl == null && k < 3; k++) pl = plan(lv, pos, want, strat + k);
         if (pl == null) {               // nie ma o co oprzec
             if (prepareTemps(lv, pos, i)) return false;     // postawimy podpore z rusztowania
             deferred[i] = true;                             // inaczej - sprobujemy pozniej
@@ -438,7 +458,7 @@ final class AutoBuilder {
 
     /** Burzenie bloku z limitem prob (serwer moze odmowic - np. chroniony teren). */
     private static boolean destroy(MultiPlayerGameMode gm, BlockPos pos, int i) {
-        if (++destroys[i] > 4) { skip(i); return false; }
+        if (++destroys[i] > MAX_TRIES + 2) { skip(i); return false; }
         gm.destroyBlock(pos);
         destroyCount++;
         return false;
@@ -451,7 +471,8 @@ final class AutoBuilder {
         layerProgress = true;
         placedCount++;
         if (pos.getY() > maxPlacedY) maxPlacedY = pos.getY();
-        if (Props.id(Flow.ws[i]).contains("sign")) Ui.closeScreenSoon();     // okno edycji tekstu tabliczki
+        placedHere[i] = true;
+        if (Props.id(Flow.ws[i]).contains("sign")) Ui.queueSign(Flow.wtext.length > i ? Flow.wtext[i] : null);   // tekst tabliczki
         if (++attempts[i] > 6) skip(i);
     }
 
@@ -683,6 +704,57 @@ final class AutoBuilder {
     /** Bloki przyklejane do sciany (kierunek = klikana sciana): pochodnie scienne, drabina, tabliczki scienne... */
     private static boolean wallAttached(String id) {
         return id.contains("wall_") || id.equals("ladder") || id.equals("cocoa");
+    }
+
+    private static double[][] variants(Direction face) {
+        if (face.getAxis() == Direction.Axis.Y)
+            return new double[][]{{0.5, 0.5}, {0.25, 0.25}, {0.75, 0.75}, {0.25, 0.75}, {0.75, 0.25}};
+        return new double[][]{{0.5, 0.75}, {0.5, 0.25}, {0.25, 0.75}, {0.75, 0.75}, {0.25, 0.25}, {0.75, 0.25}, {0.5, 0.5}};
+    }
+
+    private static BlockHitResult hitAt(BlockPos nb, Direction face, double a, double b) {
+        double hx, hy, hz;
+        if (face.getAxis() == Direction.Axis.Y) {
+            hx = nb.getX() + a; hz = nb.getZ() + b; hy = nb.getY() + 0.5 + face.getStepY() * 0.5;
+        } else {
+            hy = nb.getY() + b;
+            if (face.getAxis() == Direction.Axis.X) { hx = nb.getX() + 0.5 + face.getStepX() * 0.5; hz = nb.getZ() + a; }
+            else { hz = nb.getZ() + 0.5 + face.getStepZ() * 0.5; hx = nb.getX() + a; }
+        }
+        return new BlockHitResult(new Vec3(hx, hy, hz), face, nb, false);
+    }
+
+    /**
+     * Przeszukuje ustawienia (podpierany blok, miejsce klikniecia, obrot i pochylenie gracza) i pyta symulacje
+     * vanilli, jaki stan by powstal. Zwraca skipN-te ustawienie dajace DOKLADNIE zadany stan (kolejne proby
+     * po nieudanym stawianiu biora kolejne ustawienia) albo null.
+     */
+    private static Plan solve(ClientLevel lv, LocalPlayer p, BlockPos pos, BlockState want, Item item, int skipN) {
+        if (Sim.unavailable()) return null;
+        float cy = p.getYRot(), cp = p.getXRot();
+        String rot = Props.get(want, "rotation");
+        float[] yaws = rot != null ? new float[]{Mth.wrapDegrees(Props.num(rot) * 22.5f - 180f)}
+                                   : new float[]{0f, 90f, 180f, -90f};
+        float[] pitches = {0f, 90f, -90f};
+        Direction[] order = {Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.UP};
+        int found = 0;
+        for (Direction d : order) {
+            BlockPos nb = pos.relative(d);
+            BlockState ns = lv.getBlockState(nb);
+            if (ns.isAir() || ns.canBeReplaced()) continue;
+            Direction face = d.getOpposite();
+            for (double[] v : variants(face)) {
+                BlockHitResult hit = hitAt(nb, face, v[0], v[1]);
+                BlockState pr0 = Sim.predict(p, item, hit, cy, cp);              // bez zmiany obrotu
+                if (pr0 != null && Match.sameExceptClickable(pr0, want) && found++ == skipN) return new Plan(null, null, hit);
+                for (float pitch : pitches)
+                    for (float yaw : yaws) {
+                        BlockState pr = Sim.predict(p, item, hit, yaw, pitch);
+                        if (pr != null && Match.sameExceptClickable(pr, want) && found++ == skipN) return new Plan(yaw, pitch, hit);
+                    }
+            }
+        }
+        return null;
     }
 
     /** Czy przy kliknieciu w pozycji (dx,dz) w bloku drzwi dostana zawias LEWY (wg zasad vanilli). */

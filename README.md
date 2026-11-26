@@ -33,12 +33,16 @@ Klawisze zmienisz w Opcje → Sterowanie → BlockFLow.
 ## Brak podparcia = podpora z rusztowania
 Gdy blok wisi w powietrzu, bot buduje z **rusztowania** (scaffolding) kolumnę od ziemi pod blokiem albo obok niego (wybiera najkrótszą, do 48 bloków), stawia blok, a potem zdejmuje rusztowanie od góry. Nie zajmuje pól należących do budowli. Piasek/żwir (spadłyby) są pomijane. Wyłączenie: `/bf podpory`.
 
-## Stawianie 1:1 (każdy rodzaj bloku)
-Bot sprawdza nie tylko rodzaj bloku, ale i jego stan, i do trzech razy próbuje innego sposobu (obrót gracza, klikana ściana, miejsce kliknięcia), a w razie błędu burzy blok i stawia od nowa:
-- **Drzwi** (obie połówki, zawias, kierunek, otwarcie), **łóżka** (obie części), wysokie rośliny, **płyty** (też podwójne), **schody**, belki/kolumny (oś), bloki z kierunkiem (piece, skrzynie, dozowniki, tłoki, obserwatory…).
-- **Przyciski, dźwignie, szlifierki** (podłoga/ściana/sufit), pochodnie i drabiny ścienne, tabliczki i sztandary (obrót), **świece** (stosy 1–4), warstwy śniegu.
-- Stany przełączane kliknięciem (otwarte drzwi/furtki, dźwignia, opóźnienie przekaźnika, tryb komparatora) bot ustawia **kliknięciem pustą ręką**.
-- Czego **nie da się** skopiować/postawić klientem: woda i lawa, ogień, portale, byty (obrazy, ramki, pojazdy, armor standy), zawartość skrzyń i pieców, tekst tabliczek, wzory sztandarów, typ spawnera. Takie bloki są pomijane lub stawiane „puste", a podsumowanie to pokazuje.
+## Stawianie 1:1 (symulacja vanilli)
+Bot **nie zgaduje** już ustawienia. Dla każdego bloku pyta grę (`BlockItem#getPlacementState`), jaki stan postawiłaby vanilla przy danym kliknięciu (podpierany blok, miejsce kliknięcia, obrót i pochylenie gracza), i wybiera dopiero takie ustawienie, które daje **dokładnie** zadany blok. Dzięki temu poprawnie stawia m.in.:
+- **wiszące i stojące latarnie**, łańcuchy, dzwony (podłoga/sufit/ściana),
+- **tabliczki stojące i ścienne**, pochodnie stojące i ścienne, sztandary, głowy (wariant stojący/ścienny zależy od kąta patrzenia),
+- drzwi (zawias, kierunek, obie połówki), łóżka, schody (połówka), płyty (też podwójne), belki (oś), przyciski/dźwignie (podłoga/ściana/sufit), drabiny, pączki kryształów, tłoki, piece, skrzynie itd.
+Gdy po postawieniu wyjdzie inny blok lub stan (np. ścienna zamiast stojącej tabliczki), bot **burzy go i próbuje następnego ustawienia** (do 8 prób), zamiast go zostawiać.
+- Tekst **tabliczek** jest kopiowany i wpisywany po postawieniu (też zapisywany w slotach).
+- Stany przełączane kliknięciem (otwarte drzwi/furtki, dźwignia, opóźnienie przekaźnika, nuta w bloku nutowym) bot ustawia **kliknięciem pustą ręką**.
+- Jeśli symulacja jest niedostępna (zmiana API), w `latest.log` pojawi się wpis „symulacja stawiania niedostepna" i bot wraca do wbudowanych heurystyk.
+- Czego **nie da się** skopiować/postawić klientem: woda i lawa, ogień, portale, byty (obrazy, ramki, pojazdy, armor standy), zawartość skrzyń i pieców, wzory sztandarów, typ spawnera. Na końcu budowy bot wypisuje, które typy pominął.
 
 ## Menu i sloty (prawy Shift)
 - **Prawy Shift** (lub `/bf menu`) otwiera menu: **10 slotów na własne budowle** (2 strony po 5) i strona z **gotowymi schematami** (20 sztuk, **z wyposażeniem**: drzwi, łóżka, szafy, piece, klatki schodowe, dźwignie z lampami, pułapka w piramidzie…: domek wiejski, willa, **zamek**, **galeon**, hotel, blok radziecki, **trzy wieżowce** (radziecki, szklany, art deco), biurowiec, bank, kościół, wiatrak, latarnia morska, most łukowy, piramida, wieża zegarowa, stodoła, mur z basztami, kamienica).

@@ -10,9 +10,10 @@ import net.minecraft.world.level.block.state.BlockState;
 final class Match {
     private Match() {}
 
-    private static final String[] ALWAYS = {"facing", "axis", "half", "part", "hinge", "face", "rotation", "attachment"};
+    private static final String[] ALWAYS = {"facing", "axis", "half", "part", "hinge", "face", "rotation", "attachment",
+            "hanging", "orientation", "vertical_direction"};
     private static final String[] STACK = {"candles", "pickles", "layers", "eggs", "flower_amount", "segment_amount"};
-    private static final String[] CLICKABLE = {"open", "powered", "delay", "mode"};
+    private static final String[] CLICKABLE = {"open", "powered", "delay", "mode", "note", "inverted"};
 
     static boolean same(BlockState cur, BlockState want) {
         return core(cur, want) && clickable(cur, want);
@@ -40,6 +41,8 @@ final class Match {
             case "powered": return id.equals("lever");
             case "delay": return id.equals("repeater");
             case "mode": return id.equals("comparator");
+            case "note": return id.equals("note_block");
+            case "inverted": return id.contains("daylight_detector");
             default: return false;
         }
     }

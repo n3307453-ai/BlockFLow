@@ -16,7 +16,9 @@ import java.util.Map;
 
 /** Stan moda: zaznaczenie, schowek, transformacja (obrot/lustro), plan budowy i postep. */
 public final class Flow {
-    public record Cell(int x, int y, int z, BlockState state) {}
+    public record Cell(int x, int y, int z, BlockState state, String[] text) {
+        public Cell(int x, int y, int z, BlockState state) { this(x, y, z, state, null); }
+    }
 
     static final int MAX_VOLUME = 1_000_000;
     static final int MAX_DIM = 2000;
@@ -37,6 +39,7 @@ public final class Flow {
     static int n;
     static int[] wx = new int[0], wy = new int[0], wz = new int[0];
     static BlockState[] ws = new BlockState[0];
+    static String[][] wtext = new String[0][];          // tekst tabliczek (null = brak)
     static boolean[] done = new boolean[0];
     static boolean[] skip = new boolean[0];
     static boolean[] approx = new boolean[0];   // zaakceptowane z przyblizonym stanem
@@ -79,7 +82,7 @@ public final class Flow {
                 for (int x = x0; x <= x1; x++) {
                     mp.set(x, y, z);
                     BlockState st = lv.getBlockState(mp);
-                    if (!st.isAir()) cells.add(new Cell(x - x0, y - y0, z - z0, st));
+                    if (!st.isAir()) cells.add(new Cell(x - x0, y - y0, z - z0, st, st.hasBlockEntity() ? Signs.read(lv, mp) : null));
                 }
         clip = cells.toArray(new Cell[0]);
         sx = w; sy = h; sz = d;
@@ -114,6 +117,7 @@ public final class Flow {
             n = 0;
             wx = wy = wz = new int[0];
             ws = new BlockState[0];
+            wtext = new String[0][];
             done = new boolean[0];
             skip = new boolean[0];
             approx = new boolean[0];
@@ -124,6 +128,7 @@ public final class Flow {
         n = clip.length;
         wx = new int[n]; wy = new int[n]; wz = new int[n];
         ws = new BlockState[n];
+        wtext = new String[n][];
         done = new boolean[n];
         skip = new boolean[n];
         approx = new boolean[n];
@@ -143,6 +148,7 @@ public final class Flow {
             wy[i] = anchor.getY() + c.y();
             wz[i] = anchor.getZ() + nz;
             ws[i] = c.state().mirror(mirror).rotate(rotation);
+            wtext[i] = c.text();
 
             int snake = (nz & 1) == 0 ? nx : 4095 - Math.min(nx, 4095);
             long key = (((long) c.y() & 0xFFF) << 24) | (((long) nz & 0xFFF) << 12) | (snake & 0xFFF);
