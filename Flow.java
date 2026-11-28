@@ -14,14 +14,36 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Stan moda: zaznaczenie, schowek, transformacja (obrot/lustro), plan budowy i postep. */
+/**
+ * Stan moda: zaznaczenie, schowek, aktualny budynek (obrot/lustro/miejsce) i KOLEJKA budynkow.
+ * Plan budowy = kolejka + aktualny budynek (jesli postawiony), scalone w jedne tablice.
+ */
 public final class Flow {
     public record Cell(int x, int y, int z, BlockState state, String[] text) {
         public Cell(int x, int y, int z, BlockState state) { this(x, y, z, state, null); }
     }
 
+    /** Jeden zakotwiczony budynek (w kolejce lub aktualny). */
+    static final class Placed {
+        final Cell[] clip;
+        final int sx, sy, sz;
+        final Rotation rot;
+        final Mirror mir;
+        final BlockPos anchor;
+
+        Placed(Cell[] clip, int sx, int sy, int sz, Rotation rot, Mirror mir, BlockPos anchor) {
+            this.clip = clip; this.sx = sx; this.sy = sy; this.sz = sz;
+            this.rot = rot; this.mir = mir; this.anchor = anchor;
+        }
+
+        int dimX() { return (rot == Rotation.CLOCKWISE_90 || rot == Rotation.COUNTERCLOCKWISE_90) ? sz : sx; }
+        int dimZ() { return (rot == Rotation.CLOCKWISE_90 || rot == Rotation.COUNTERCLOCKWISE_90) ? sx : sz; }
+    }
+
     static final int MAX_VOLUME = 1_000_000;
     static final int MAX_DIM = 2000;
+    static final int MAX_TOTAL = 1_000_000;
+    static final int MAX_QUEUE = 15;
 
     // zaznaczenie
     static BlockPos pos1, pos2;
@@ -30,24 +52,32 @@ public final class Flow {
     static int sx, sy, sz;
     static Cell[] clip = new Cell[0];
 
-    // transformacja i miejsce docelowe
+    // aktualny budynek: obrot i miejsce
     static Rotation rotation = Rotation.NONE;
     static Mirror mirror = Mirror.NONE;
-    static BlockPos anchor;           // minimalny narozik postawionej budowli
+    static BlockPos anchor;           // minimalny naroznik postawionego budynku (null = nie postawiony)
 
-    // plan po transformacji
+    // kolejka budynkow
+    static final List<Placed> queue = new ArrayList<>();
+    static boolean parallel = true;   // true: warstwami naraz we wszystkich budynkach; false: po kolei
+    static final List<int[]> bounds = new ArrayList<>();   // x,y,z,w,h,d kazdego budynku (do obrysu)
+    static int topY = Integer.MIN_VALUE;
+
+    // plan po transformacji (scalony)
     static int n;
     static int[] wx = new int[0], wy = new int[0], wz = new int[0];
     static BlockState[] ws = new BlockState[0];
     static String[][] wtext = new String[0][];          // tekst tabliczek (null = brak)
+    static int[] wb = new int[0];                        // numer budynku
+    static int[] grp = new int[0];                       // grupa warstwy (budowa warstwami)
     static boolean[] done = new boolean[0];
     static boolean[] skip = new boolean[0];
-    static boolean[] approx = new boolean[0];   // zaakceptowane z przyblizonym stanem
-    static int maxDoneY = Integer.MIN_VALUE;     // najwyzszy potwierdzony blok planu
-    static boolean scanWrapped;                  // czy skan przeszedl caly plan
-    static int[] order = new int[0];  // kolejnosc budowy: warstwami od dolu
-    static long[] posKeys = new long[0];   // posortowane pozycje planu (dla inPlan)
+    static boolean[] approx = new boolean[0];
+    static int[] order = new int[0];                     // kolejnosc budowy
+    static long[] posKeys = new long[0];                 // posortowane pozycje planu (dla inPlan)
     static int doneCount, scanCursor;
+    static int maxDoneY = Integer.MIN_VALUE;
+    static boolean scanWrapped;
 
     // ustawienia podgladu
     static int range = 24;
@@ -101,10 +131,41 @@ public final class Flow {
         rebuild();
     }
 
-    // ------------------------------------------------------------------ transformacja
+    // ------------------------------------------------------------------ kolejka
+    static String queueAdd() {
+        if (clip.length == 0) return "Schowek jest pusty - najpierw skopiuj albo wczytaj budynek.";
+        if (anchor == null) return "Najpierw postaw budynek (Postaw na celowniku).";
+        if (queue.size() >= MAX_QUEUE) return "Kolejka pelna (max " + MAX_QUEUE + ").";
+        queue.add(new Placed(clip, sx, sy, sz, rotation, mirror, anchor));
+        anchor = null;                       // schowek zostaje - mozna postawic kolejny egzemplarz
+        rebuild();
+        return "Dodano do kolejki (" + queue.size() + " budynkow, razem " + n + " blokow).";
+    }
+
+    static void queueClear() {
+        queue.clear();
+        rebuild();
+    }
+
+    // ------------------------------------------------------------------ transformacja i scalanie planu
     static void rebuild() {
         rebuildInner();
         AutoBuilderReset.reset();   // po ustawieniu n, zeby tablice mialy dobry rozmiar
+    }
+
+    private static void emptyPlan() {
+        n = 0;
+        wx = wy = wz = new int[0];
+        ws = new BlockState[0];
+        wtext = new String[0][];
+        wb = new int[0];
+        grp = new int[0];
+        done = new boolean[0];
+        skip = new boolean[0];
+        approx = new boolean[0];
+        order = new int[0];
+        posKeys = new long[0];
+        topY = Integer.MIN_VALUE;
     }
 
     private static void rebuildInner() {
@@ -113,46 +174,64 @@ public final class Flow {
         doneCount = 0;
         scanCursor = 0;
         visN = 0;
-        if (clip.length == 0 || anchor == null) {
-            n = 0;
-            wx = wy = wz = new int[0];
-            ws = new BlockState[0];
-            wtext = new String[0][];
-            done = new boolean[0];
-            skip = new boolean[0];
-            approx = new boolean[0];
-            order = new int[0];
-            posKeys = new long[0];
-            return;
+        bounds.clear();
+
+        List<Placed> all = new ArrayList<>(queue);
+        if (anchor != null && clip.length > 0) all.add(new Placed(clip, sx, sy, sz, rotation, mirror, anchor));
+        long total = 0;
+        int use = 0;
+        for (Placed pl : all) {
+            if (total + pl.clip.length > MAX_TOTAL) break;
+            total += pl.clip.length;
+            use++;
         }
-        n = clip.length;
+        if (use == 0) { emptyPlan(); return; }
+        all = all.subList(0, use);
+
+        n = (int) total;
         wx = new int[n]; wy = new int[n]; wz = new int[n];
         ws = new BlockState[n];
         wtext = new String[n][];
+        wb = new int[n];
+        grp = new int[n];
         done = new boolean[n];
         skip = new boolean[n];
         approx = new boolean[n];
         long[] keys = new long[n];
+        topY = Integer.MIN_VALUE;
 
-        for (int i = 0; i < n; i++) {
-            Cell c = clip[i];
-            int x = c.x(), z = c.z();
-            if (mirror == Mirror.LEFT_RIGHT) z = sz - 1 - z;
-            int nx, nz;
-            if (rotation == Rotation.CLOCKWISE_90) { nx = sz - 1 - z; nz = x; }
-            else if (rotation == Rotation.CLOCKWISE_180) { nx = sx - 1 - x; nz = sz - 1 - z; }
-            else if (rotation == Rotation.COUNTERCLOCKWISE_90) { nx = z; nz = sx - 1 - x; }
-            else { nx = x; nz = z; }
+        int off = 0;
+        for (int b = 0; b < all.size(); b++) {
+            Placed pl = all.get(b);
+            bounds.add(new int[]{pl.anchor.getX(), pl.anchor.getY(), pl.anchor.getZ(), pl.dimX(), pl.sy, pl.dimZ()});
+            topY = Math.max(topY, pl.anchor.getY() + pl.sy);
+            for (int j = 0; j < pl.clip.length; j++) {
+                int i = off + j;
+                Cell c = pl.clip[j];
+                int x = c.x(), z = c.z();
+                if (pl.mir == Mirror.LEFT_RIGHT) z = pl.sz - 1 - z;
+                int nx, nz;
+                if (pl.rot == Rotation.CLOCKWISE_90) { nx = pl.sz - 1 - z; nz = x; }
+                else if (pl.rot == Rotation.CLOCKWISE_180) { nx = pl.sx - 1 - x; nz = pl.sz - 1 - z; }
+                else if (pl.rot == Rotation.COUNTERCLOCKWISE_90) { nx = z; nz = pl.sx - 1 - x; }
+                else { nx = x; nz = z; }
 
-            wx[i] = anchor.getX() + nx;
-            wy[i] = anchor.getY() + c.y();
-            wz[i] = anchor.getZ() + nz;
-            ws[i] = c.state().mirror(mirror).rotate(rotation);
-            wtext[i] = c.text();
+                wx[i] = pl.anchor.getX() + nx;
+                wy[i] = pl.anchor.getY() + c.y();
+                wz[i] = pl.anchor.getZ() + nz;
+                ws[i] = c.state().mirror(pl.mir).rotate(pl.rot);
+                wtext[i] = c.text();
+                wb[i] = b;
 
-            int snake = (nz & 1) == 0 ? nx : 4095 - Math.min(nx, 4095);
-            long key = (((long) c.y() & 0xFFF) << 24) | (((long) nz & 0xFFF) << 12) | (snake & 0xFFF);
-            keys[i] = (key << 20) | i;
+                int rel = c.y();
+                grp[i] = parallel ? rel : b * 4096 + rel;
+                int snake = (nz & 1) == 0 ? nx : 4095 - Math.min(nx, 4095);
+                long inner = (((long) nz & 0xFFF) << 12) | (snake & 0xFFF);
+                long head = parallel ? ((((long) rel & 0xFFF) << 4) | (b & 0xF))
+                                     : ((((long) b & 0xF) << 12) | ((long) rel & 0xFFF));
+                keys[i] = (((head << 24) | inner) << 20) | i;
+            }
+            off += pl.clip.length;
         }
         Arrays.sort(keys);
         order = new int[n];
@@ -186,11 +265,18 @@ public final class Flow {
         rebuild();
     }
 
+    /** Czysci wszystko: schowek, aktualny budynek i kolejke. */
     static void clearPlan() {
         clip = new Cell[0];
         anchor = null;
         rotation = Rotation.NONE;
         mirror = Mirror.NONE;
+        queue.clear();
+        rebuild();
+    }
+
+    static void setParallel(boolean p) {
+        parallel = p;
         rebuild();
     }
 
@@ -203,7 +289,7 @@ public final class Flow {
         };
     }
 
-    /** Wymiary X/Z po obrocie. */
+    /** Wymiary X/Z aktualnego budynku po obrocie. */
     static int dimX() { return (rotation == Rotation.CLOCKWISE_90 || rotation == Rotation.COUNTERCLOCKWISE_90) ? sz : sx; }
     static int dimZ() { return (rotation == Rotation.CLOCKWISE_90 || rotation == Rotation.COUNTERCLOCKWISE_90) ? sx : sz; }
 

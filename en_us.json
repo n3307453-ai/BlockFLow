@@ -13,5 +13,6 @@
   "key.blockflow.nudge_left": "Move building left",
   "key.blockflow.nudge_right": "Move building right",
   "key.blockflow.nudge_up": "Move building up",
-  "key.blockflow.nudge_down": "Move building down"
+  "key.blockflow.nudge_down": "Move building down",
+  "key.blockflow.queue": "Add building to build queue"
 }

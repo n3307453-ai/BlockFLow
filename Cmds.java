@@ -1,6 +1,7 @@
 package pl.blockflow;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
@@ -53,11 +54,25 @@ final class Cmds {
                         .then(ClientCommands.argument("n", IntegerArgumentType.integer(4, 128))
                                 .executes(c -> { Actions.range(IntegerArgumentType.getInteger(c, "n")); return 1; })))
                 .then(ClientCommands.literal("speed")
-                        .then(ClientCommands.argument("n", IntegerArgumentType.integer(1, 8))
+                        .then(ClientCommands.argument("n", IntegerArgumentType.integer(1, 64))
                                 .executes(c -> { Actions.speed(IntegerArgumentType.getInteger(c, "n")); return 1; })))
                 .then(lit("replace", Actions::replace))
                 .then(lit("menu", Ui::openMenuNextTick))
                 .then(lit("podpory", Actions::togglePodpory))
+                .then(ClientCommands.literal("kolejka")
+                        .then(lit("dodaj", Actions::queueAdd))
+                        .then(lit("wyczysc", Actions::queueClear))
+                        .then(lit("tryb", Actions::queueMode))
+                        .then(lit("status", Actions::status)))
+                .then(ClientCommands.literal("tempo")
+                        .then(ClientCommands.argument("blokow_na_sekunde", IntegerArgumentType.integer(20, 1280))
+                                .executes(c -> { Actions.tempo(IntegerArgumentType.getInteger(c, "blokow_na_sekunde")); return 1; })))
+                .then(ClientCommands.literal("czas")
+                        .then(ClientCommands.argument("sekundy", IntegerArgumentType.integer(1, 3600))
+                                .executes(c -> { Actions.czas(IntegerArgumentType.getInteger(c, "sekundy")); return 1; })))
+                .then(ClientCommands.literal("lot")
+                        .then(ClientCommands.argument("v", DoubleArgumentType.doubleArg(0.3, 6.0))
+                                .executes(c -> { Actions.lot(DoubleArgumentType.getDouble(c, "v")); return 1; })))
                 .then(ClientCommands.literal("krok")
                         .then(ClientCommands.argument("n", IntegerArgumentType.integer(1, 200))
                                 .executes(c -> { Actions.step = IntegerArgumentType.getInteger(c, "n"); Msg.chat("Krok: " + Actions.step); return 1; })))

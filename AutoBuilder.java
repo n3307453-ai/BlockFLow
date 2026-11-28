@@ -37,7 +37,7 @@ final class AutoBuilder {
     private AutoBuilder() {}
 
     static final int HOT = 8;            // slot paska, ktory "pozyczamy" (potem oddajemy)
-    static final double REACH = 4.2;     // max odleglosc oka od srodka bloku przy stawianiu
+    static final double REACH = 4.8;     // max odleglosc oka od srodka bloku przy stawianiu
 
     static boolean running;
     static int cursor;
@@ -53,8 +53,8 @@ final class AutoBuilder {
     static int targetIdx = -1;
     static int maxPlacedY = Integer.MIN_VALUE;
 
-    static double speed = 0.45;          // blokow/tick podczas lotu
-    static int perTick = 1;              // ile blokow na tick
+    static double speed = 2.5;           // blokow/tick podczas lotu (serwer vanilla toleruje do ~10)
+    static int perTick = 15;             // ile blokow na tick (15 = 300 blokow/s, czyli 3000 blokow w 10 s)
     static boolean replace = false;      // czy niszczyc przeszkadzajace (obce) bloki
     static boolean useTemps = true;      // podpory z rusztowania dla blokow wiszacych w powietrzu
 
@@ -66,6 +66,9 @@ final class AutoBuilder {
     private static int rubber, idle, idleSkips, manualTicks;
     private static boolean moved;
     private static boolean approachFailed;
+    private static int curTick;
+    private static int[] placedTick = new int[0];
+    private static final int NEAR_WINDOW = 800;     // ile kolejnych blokow planu sprawdzamy pod katem bliskosci
 
     // budowa warstwami od podlogi w gore
     private static int layerY = Integer.MIN_VALUE;
@@ -109,6 +112,8 @@ final class AutoBuilder {
         destroys = new int[Flow.n];
         clicks = new int[Flow.n];
         placedHere = new boolean[Flow.n];
+        placedTick = new int[Flow.n];
+        Arrays.fill(placedTick, -1);
         skippedTypes.clear();
         tempRounds = new int[Flow.n];
         tempQueue.clear();
@@ -127,7 +132,7 @@ final class AutoBuilder {
     }
 
     static double topBuilt() {
-        int t = Flow.scanWrapped ? Math.max(Flow.maxDoneY, maxPlacedY) : Flow.anchor.getY() + Flow.sy;
+        int t = Flow.scanWrapped ? Math.max(Flow.maxDoneY, maxPlacedY) : Flow.topY;
         return t;
     }
 
@@ -198,6 +203,7 @@ final class AutoBuilder {
     // ------------------------------------------------------------------ petla
     static void tick(Minecraft mc) {
         if (!running) return;
+        curTick++;
         LocalPlayer p = mc.player;
         ClientLevel lv = mc.level;
         MultiPlayerGameMode gm = mc.gameMode;
@@ -230,9 +236,13 @@ final class AutoBuilder {
             return;
         }
 
+        // wiele blokow na tick: najpierw wszystko z biezacej warstwy, co jest w zasiegu, dopiero potem lot dalej
         for (int k = 0; k < perTick; k++) {
-            int i = next(lv);
-            if (i < 0) { finish(mc); return; }
+            int i = nextNear(lv, p);
+            if (i < 0) {
+                i = next(lv);
+                if (i < 0) { finish(mc); return; }
+            }
             targetIdx = i;
             if (!stepOne(p, lv, gm, i)) break;
         }
@@ -292,6 +302,35 @@ final class AutoBuilder {
         return false;
     }
 
+    /**
+     * Najblizszy w zasiegu niepostawiony blok z BIEZACEJ warstwy (w oknie kolejnych NEAR_WINDOW blokow planu).
+     * Wybiera najchetniej taki sam przedmiot jak trzymany (mniej zmian slotu = mniej pakietow), albo -1.
+     */
+    private static int nextNear(ClientLevel lv, LocalPlayer p) {
+        int n = Flow.n;
+        if (cursor >= n) return -1;
+        Vec3 eye = p.getEyePosition();
+        Item held = p.getInventory().getItem(HOT).getItem();
+        int curGrp = Flow.grp[Flow.order[cursor]];
+        double lim = (REACH - 0.2) * (REACH - 0.2);
+        BlockPos.MutableBlockPos mp = new BlockPos.MutableBlockPos();
+        int best = -1;
+        int end = Math.min(n, cursor + NEAR_WINDOW);
+        for (int k = cursor; k < end; k++) {
+            int i = Flow.order[k];
+            if (Flow.grp[i] != curGrp) break;
+            if (Flow.skip[i] || deferred[i] || Flow.done[i] || placedTick[i] == curTick) continue;
+            double dx = Flow.wx[i] + 0.5 - eye.x, dy = Flow.wy[i] + 0.5 - eye.y, dz = Flow.wz[i] + 0.5 - eye.z;
+            if (dx * dx + dy * dy + dz * dz > lim) continue;
+            mp.set(Flow.wx[i], Flow.wy[i], Flow.wz[i]);
+            if (Match.same(lv.getBlockState(mp), Flow.ws[i])) { markDone(i); continue; }
+            Item it = Flow.ws[i].getBlock().asItem();
+            if (it == held) return i;
+            if (best < 0) best = i;
+        }
+        return best;
+    }
+
     /** Nastepny indeks planu do postawienia albo -1 (budowa warstwami). */
     private static int next(ClientLevel lv) {
         int n = Flow.n;
@@ -299,14 +338,14 @@ final class AutoBuilder {
         while (true) {
             while (cursor < n) {
                 int i = Flow.order[cursor];
-                if (Flow.wy[i] != layerY) {
+                if (Flow.grp[i] != layerY) {
                     if (layerProgress && layerHasDeferred(cursor)) {
                         for (int k = layerStart; k < cursor; k++) deferred[Flow.order[k]] = false;
                         cursor = layerStart;
                         layerProgress = false;
                         continue;
                     }
-                    layerY = Flow.wy[i];
+                    layerY = Flow.grp[i];
                     layerStart = cursor;
                     layerProgress = false;
                 }
@@ -346,6 +385,7 @@ final class AutoBuilder {
 
     /** true = mozna od razu brac kolejny blok w tym ticku. */
     private static boolean stepOne(LocalPlayer p, ClientLevel lv, MultiPlayerGameMode gm, int i) {
+        if (placedTick[i] == curTick) return false;      // jeden blok - jedna proba na tick (czekamy na potwierdzenie)
         BlockPos pos = new BlockPos(Flow.wx[i], Flow.wy[i], Flow.wz[i]);
         if (!approach(p, lv, pos, i)) {
             if (approachFailed) { approachFailed = false; skip(i); }
@@ -367,7 +407,6 @@ final class AutoBuilder {
         // druga polowka drzwi / lozka / wysokiej rosliny powstaje razem z pierwsza
         if ("upper".equals(Props.get(want, "half")) || "head".equals(Props.get(want, "part"))) {
             deferred[i] = true;
-            cursor++;
             return false;
         }
 
@@ -421,7 +460,6 @@ final class AutoBuilder {
         if (pl == null) {               // nie ma o co oprzec
             if (prepareTemps(lv, pos, i)) return false;     // postawimy podpore z rusztowania
             deferred[i] = true;                             // inaczej - sprobujemy pozniej
-            cursor++;
             return false;
         }
 
@@ -472,6 +510,7 @@ final class AutoBuilder {
         placedCount++;
         if (pos.getY() > maxPlacedY) maxPlacedY = pos.getY();
         placedHere[i] = true;
+        placedTick[i] = curTick;
         if (Props.id(Flow.ws[i]).contains("sign")) Ui.queueSign(Flow.wtext.length > i ? Flow.wtext[i] : null);   // tekst tabliczki
         if (++attempts[i] > 6) skip(i);
     }

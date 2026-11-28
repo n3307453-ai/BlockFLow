@@ -44,6 +44,14 @@ Gdy po postawieniu wyjdzie inny blok lub stan (np. ścienna zamiast stojącej ta
 - Jeśli symulacja jest niedostępna (zmiana API), w `latest.log` pojawi się wpis „symulacja stawiania niedostepna" i bot wraca do wbudowanych heurystyk.
 - Czego **nie da się** skopiować/postawić klientem: woda i lawa, ogień, portale, byty (obrazy, ramki, pojazdy, armor standy), zawartość skrzyń i pieców, wzory sztandarów, typ spawnera. Na końcu budowy bot wypisuje, które typy pominął.
 
+## Kolejka budynków (wiele naraz) i tempo
+- **Kolejka:** postaw budynek (Postaw na celowniku), wciśnij **K** (albo menu → „Dodaj do kolejki"), potem postaw kolejny – może to być ten sam schemat jeszcze raz (np. 5 domków w rzędzie) albo inny. Maks. 15 budynków w kolejce + aktualny. Komendy: `/bf kolejka dodaj|wyczysc|tryb|status`.
+- **Tryb „naraz":** bot buduje **warstwami we wszystkich budynkach jednocześnie** (najpierw fundamenty wszystkich, potem kolejna warstwa…). **„Po kolei":** budynek po budynku. Przełączanie: `/bf kolejka tryb` albo menu.
+- **START** buduje cały plan (kolejka + aktualny budynek). Obrysy wszystkich budynków widać w świecie.
+- **Tempo:** domyślnie 15 bloków na tick = **300 bloków/s (3000 bloków w ok. 10 s)**. Ustaw: `/bf tempo <bloków/s>` (20–1280), `/bf czas <sekundy>` (ustawia tempo tak, by pozostałe bloki zbudować w tylu sekundach), `/bf speed <1–64>` (bloków na tick), `/bf lot <0.3–6>` (prędkość lotu w blokach/tick, domyślnie 2.5). W menu: strona „kolejka i tempo" z gotowymi ustawieniami.
+- **Jak to działa szybko:** bot stawia wiele bloków w jednym ticku – najpierw **wszystko z bieżącej warstwy, co jest w zasięgu** (najchętniej tym samym przedmiotem, żeby rzadziej zmieniać slot), dopiero potem leci dalej.
+- **Uwaga o serwerze:** wysokie tempo to setki pakietów na sekundę. Własny serwer vanilla to zwykle znosi; serwery z limiterem pakietów (np. Paper) mogą rozłączyć gracza. Rzeczywisty czas zależy też od lotu, TPS serwera i gęstości budynku.
+
 ## Menu i sloty (prawy Shift)
 - **Prawy Shift** (lub `/bf menu`) otwiera menu: **10 slotów na własne budowle** (2 strony po 5) i strona z **gotowymi schematami** (20 sztuk, **z wyposażeniem**: drzwi, łóżka, szafy, piece, klatki schodowe, dźwignie z lampami, pułapka w piramidzie…: domek wiejski, willa, **zamek**, **galeon**, hotel, blok radziecki, **trzy wieżowce** (radziecki, szklany, art deco), biurowiec, bank, kościół, wiatrak, latarnia morska, most łukowy, piramida, wieża zegarowa, stodoła, mur z basztami, kamienica).
 - **Zapisz** zapisuje aktualny schowek (najpierw zaznacz i `copy`), **Wczytaj** wrzuca slot do schowka, **Usuń** czyści slot.

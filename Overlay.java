@@ -37,12 +37,12 @@ final class Overlay {
                     selStyle);
         }
 
-        if (Flow.n == 0 || Flow.anchor == null) return;
+        if (Flow.n == 0) return;
 
-        // obrys budowli
-        var an = Flow.anchor;
-        Gizmos.cuboid(new AABB(an.getX(), an.getY(), an.getZ(),
-                an.getX() + Flow.dimX(), an.getY() + Flow.sy, an.getZ() + Flow.dimZ()), boundsStyle);
+        // obrysy wszystkich budynkow (kolejka + aktualny)
+        for (int[] b : Flow.bounds) {
+            Gizmos.cuboid(new AABB(b[0], b[1], b[2], b[0] + b[3], b[1] + b[4], b[2] + b[5]), boundsStyle);
+        }
 
         // brakujace bloki
         for (int k = 0; k < Flow.visN; k++) {

@@ -13,5 +13,6 @@
   "key.blockflow.nudge_left": "Budowla: w lewo",
   "key.blockflow.nudge_right": "Budowla: w prawo",
   "key.blockflow.nudge_up": "Budowla: w gore",
-  "key.blockflow.nudge_down": "Budowla: w dol"
+  "key.blockflow.nudge_down": "Budowla: w dol",
+  "key.blockflow.queue": "Dodaj budynek do kolejki"
 }

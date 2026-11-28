@@ -104,6 +104,47 @@ final class Actions {
         Msg.chat("Przesunieto (" + rel + " x" + n + "): " + fmt(Flow.anchor));
     }
 
+    // ------------------------------------------------------------------ kolejka, tempo
+    static void queueAdd() { Msg.chat(Flow.queueAdd()); }
+
+    static void queueClear() {
+        Flow.queueClear();
+        Msg.chat("Kolejka wyczyszczona.");
+    }
+
+    static void queueMode() {
+        Flow.setParallel(!Flow.parallel);
+        Msg.chat("Tryb kolejki: " + (Flow.parallel ? "WSZYSTKIE NARAZ (warstwami)" : "po kolei, budynek po budynku"));
+    }
+
+    static int buildings() { return Flow.bounds.size(); }
+
+    /** Orientacyjny czas budowy w sekundach (bez czasu lotu). */
+    static double etaSeconds() {
+        int remaining = Math.max(0, Flow.n - Flow.doneCount);
+        return remaining / (AutoBuilder.perTick * 20.0);
+    }
+
+    static void tempo(int blocksPerSecond) {
+        AutoBuilder.perTick = Math.max(1, Math.min(64, (int) Math.round(blocksPerSecond / 20.0)));
+        Msg.chat(String.format("Tempo: %d blokow na tick (%d/s). Pozostale %d blokow = ok. %.0f s (bez lotu).",
+                AutoBuilder.perTick, AutoBuilder.perTick * 20, Math.max(0, Flow.n - Flow.doneCount), etaSeconds())
+                + (AutoBuilder.perTick > 25 ? " Uwaga: wysokie tempo moze wyzwolic limity pakietow serwera." : ""));
+    }
+
+    /** Ustawia tempo tak, zeby pozostale bloki zbudowac w mniej wiecej tylu sekundach. */
+    static void czas(int seconds) {
+        int remaining = Math.max(1, Flow.n - Flow.doneCount);
+        AutoBuilder.perTick = Math.max(1, Math.min(64, (int) Math.ceil(remaining / (Math.max(1, seconds) * 20.0))));
+        Msg.chat(String.format("Cel: %d blokow w ok. %d s -> %d blokow na tick (%d/s). Rzeczywisty czas zalezy tez od lotu i serwera.",
+                remaining, seconds, AutoBuilder.perTick, AutoBuilder.perTick * 20));
+    }
+
+    static void lot(double v) {
+        AutoBuilder.speed = Math.max(0.3, Math.min(6.0, v));
+        Msg.chat("Predkosc lotu: " + AutoBuilder.speed + " bloku/tick (serwer vanilla toleruje do ok. 10).");
+    }
+
     static void togglePodpory() {
         AutoBuilder.useTemps = !AutoBuilder.useTemps;
         Msg.chat("Podpory z rusztowania dla blokow w powietrzu: " + (AutoBuilder.useTemps ? "TAK" : "nie"));
@@ -124,9 +165,9 @@ final class Actions {
 
     static void status() {
         if (Flow.n == 0) { Msg.chat("Brak planu."); return; }
-        Msg.chat(String.format("%d/%d (%.1f%%), obrot %d\u00b0, %s, auto-budowa: %s",
-                Flow.doneCount, Flow.n, Flow.percent(), Flow.rotationDegrees(),
-                Flow.mirror.ordinal() != 0 ? "lustro" : "bez lustra",
+        Msg.chat(String.format("%d/%d (%.1f%%), budynkow: %d (%s), tempo %d/s (ok. %.0f s), auto-budowa: %s",
+                Flow.doneCount, Flow.n, Flow.percent(), buildings(),
+                Flow.parallel ? "naraz" : "po kolei", AutoBuilder.perTick * 20, etaSeconds(),
                 AutoBuilder.running ? "dziala" : "stop"));
     }
 
@@ -165,7 +206,7 @@ final class Actions {
     }
 
     static void speed(int perTick) {
-        AutoBuilder.perTick = Math.max(1, Math.min(8, perTick));
+        AutoBuilder.perTick = Math.max(1, Math.min(64, perTick));
         Msg.chat("Blokow na tick: " + AutoBuilder.perTick);
     }
 
